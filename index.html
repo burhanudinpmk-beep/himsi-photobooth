@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HIMSI Photobooth — Photo.exe</title>
+<meta name="description" content="HIMSI Photobooth — Retro Tech Photobooth Experience untuk stand HIMSI Sistem Informasi di PKKMB Universitas PGRI Pontianak." />
+
+<link rel="icon" type="image/png" sizes="180x180" href="assets/branding/favicon-180.png" />
+<link rel="icon" type="image/png" sizes="48x48" href="assets/branding/favicon-48.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="assets/branding/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="assets/branding/favicon-16.png" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Pixelify+Sans:wght@500;600;700&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/components.css" />
+<link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+
+<!-- Hidden canvas dipakai internal oleh compositor, tidak pernah ditampilkan -->
+<canvas id="hidden-canvas" style="display:none;"></canvas>
+
+<div id="app">
+
+  <!-- ============ SCREEN: BOOT ============ -->
+  <section id="screen-boot" class="screen is-active" data-screen="boot">
+    <div class="boot-box">
+      <img src="assets/branding/logo-icon.png" alt="HIMSI" class="boot-box__icon" />
+      <h1 class="boot-box__title">HIMSI PHOTOBOOTH</h1>
+      <p class="boot-box__subtitle" id="boot-status">Opening Photo.exe...</p>
+      <div class="boot-progress">
+        <div class="boot-progress__bar" id="boot-progress-bar"></div>
+      </div>
+      <p class="boot-box__percent" id="boot-percent">0%</p>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: LANDING ============ -->
+  <section id="screen-landing" class="screen" data-screen="landing">
+    <div class="retro-window landing-window">
+      <div class="retro-window__titlebar">
+        <span class="retro-window__title">
+          <img src="assets/branding/favicon-16.png" alt="" class="retro-window__icon" />
+          Photo.exe
+        </span>
+        <span class="retro-window__controls">
+          <span class="retro-btn retro-btn--min">&#95;</span>
+          <span class="retro-btn retro-btn--max">&#9633;</span>
+          <span class="retro-btn retro-btn--close">&times;</span>
+        </span>
+      </div>
+      <div class="retro-window__menubar">
+        <span>File</span><span>Edit</span><span>View</span><span>Favorites</span><span>Help</span>
+      </div>
+
+      <div class="retro-window__body landing-body">
+        <!-- decorative retro elements -->
+        <div class="deco deco--star" aria-hidden="true">&#9733;</div>
+        <div class="deco deco--cursor" aria-hidden="true">&#10148;</div>
+        <div class="sticky-note" aria-hidden="true">GOOD PEOPLE<br/>CREATE MEMORIES :)</div>
+
+        <div class="landing-hero">
+          <div class="landing-hero__text">
+            <p class="himsi-brand">
+              <img src="assets/branding/favicon-32.png" alt="" class="himsi-brand__icon" />
+              HIMSI <span>PHOTOBOOTH</span>
+            </p>
+            <h2 class="landing-hero__title">CAPTURE<br/>GOOD <span class="accent-underline">MOMENTS.</span></h2>
+            <p class="landing-hero__subtitle">Abadikan momen serumu bersama Sistem Informasi di PKKMB.</p>
+            <button type="button" id="btn-yuk-foto" class="btn btn--primary btn--lg btn--cta">YUK FOTO!</button>
+            <ul class="mini-badges" aria-label="Informasi singkat">
+              <li><span class="mini-badges__dot"></span> FREE</li>
+              <li><span class="mini-badges__dot"></span> NO LOGIN</li>
+              <li><span class="mini-badges__dot"></span> INSTANT DOWNLOAD</li>
+            </ul>
+          </div>
+          <div class="landing-hero__mascot">
+            <div class="speech-bubble">Yuk Foto!</div>
+            <img src="assets/mascot/flashbot-welcome.png" alt="Flash-Bot menyambut" class="mascot-img mascot-img--welcome" />
+          </div>
+        </div>
+      </div>
+
+      <div class="retro-window__statusbar">
+        <span>Ready</span>
+        <span>HIMSI &middot; Sistem Informasi &middot; PKKMB</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: FRAMES ============ -->
+  <section id="screen-frames" class="screen" data-screen="frames">
+    <div class="retro-window">
+      <div class="retro-window__titlebar">
+        <span class="retro-window__title">
+          <img src="assets/branding/favicon-16.png" alt="" class="retro-window__icon" />
+          Frames.exe
+        </span>
+        <span class="retro-window__controls">
+          <span class="retro-btn retro-btn--min">&#95;</span>
+          <span class="retro-btn retro-btn--max">&#9633;</span>
+          <span class="retro-btn retro-btn--close">&times;</span>
+        </span>
+      </div>
+
+      <div class="retro-window__body frames-body">
+        <div class="screen-toolbar">
+          <button type="button" id="btn-back-to-landing" class="btn-back">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+            Kembali
+          </button>
+          <div class="screen-toolbar__title">
+            <h2>CHOOSE YOUR FRAME</h2>
+            <p>Pilih desain untuk momenmu.</p>
+          </div>
+          <span class="screen-toolbar__spacer" aria-hidden="true"></span>
+        </div>
+
+        <div class="frame-grid-wrap">
+          <div id="frame-grid" class="frame-grid"><!-- diisi oleh app.js --></div>
+        </div>
+
+        <div class="flash-tip">
+          <img src="assets/mascot/flashbot-welcome.png" alt="Flash-Bot" class="flash-tip__img" />
+          <div class="flash-tip__bubble">Pilih style favoritmu!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Frame preview dialog -->
+    <div id="frame-dialog" class="dialog-overlay">
+      <div class="dialog">
+        <button type="button" class="dialog__close" id="frame-dialog-close" aria-label="Tutup">&times;</button>
+        <img id="frame-dialog-img" src="" alt="Preview frame" class="dialog__img" />
+        <p id="frame-dialog-meta" class="dialog__meta"></p>
+        <div class="dialog__actions">
+          <button type="button" id="frame-dialog-back" class="btn btn--ghost">BACK</button>
+          <button type="button" id="frame-dialog-use" class="btn btn--primary">USE FRAME</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: CAMERA ============ -->
+  <section id="screen-camera" class="screen" data-screen="camera">
+    <div class="retro-window">
+      <div class="retro-window__titlebar">
+        <span class="retro-window__title">
+          <img src="assets/branding/favicon-16.png" alt="" class="retro-window__icon" />
+          Camera.exe
+        </span>
+        <span class="retro-window__controls">
+          <span class="retro-btn retro-btn--min">&#95;</span>
+          <span class="retro-btn retro-btn--max">&#9633;</span>
+          <span class="retro-btn retro-btn--close">&times;</span>
+        </span>
+      </div>
+
+      <div class="retro-window__body camera-body">
+        <div class="screen-toolbar">
+          <button type="button" id="btn-back-to-frames" class="btn-back">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+            Kembali
+          </button>
+          <div class="screen-toolbar__title">
+            <h2>CAMERA SESSION</h2>
+          </div>
+          <span class="live-indicator is-hidden" id="live-indicator"><span class="live-dot"></span> LIVE</span>
+        </div>
+
+        <div class="camera-content">
+
+        <!-- Permission gate -->
+        <div id="camera-permission" class="camera-gate">
+          <img src="assets/mascot/flashbot-welcome.png" alt="Flash-Bot" class="camera-gate__img" />
+          <h3>CAMERA ACCESS REQUIRED</h3>
+          <p>Photobooth membutuhkan akses kamera untuk mengambil fotomu.<br/>Foto hanya diambil ketika kamu menekan tombol Capture.</p>
+          <button type="button" id="btn-enable-camera" class="btn btn--primary btn--lg">AKTIFKAN KAMERA</button>
+        </div>
+
+        <!-- Error state -->
+        <div id="camera-error" class="camera-gate is-hidden">
+          <img src="assets/mascot/flashbot-error.png" alt="Flash-Bot error" class="camera-gate__img" />
+          <h3 id="camera-error-title">UPS!</h3>
+          <p id="camera-error-message">Kamera belum aktif. Izinkan akses kamera pada browser lalu coba lagi.</p>
+          <button type="button" id="btn-retry-camera" class="btn btn--primary btn--lg">TRY AGAIN</button>
+        </div>
+
+        <!-- Live camera -->
+        <div id="camera-live" class="camera-live is-hidden">
+          <div class="camera-live__video-wrap">
+            <video id="camera-video" autoplay playsinline muted></video>
+
+            <div id="countdown-overlay" class="countdown-overlay">
+              <span id="countdown-label" class="countdown-label"></span>
+            </div>
+            <div id="countdown-flash" class="countdown-flash"></div>
+          </div>
+
+          <div class="camera-live__panel">
+            <p class="camera-live__frame-name" id="camera-frame-name">FRAME_04.PNG</p>
+            <p class="camera-live__progress-text">
+              PHOTO <span id="camera-photo-current">01</span> / <span id="camera-photo-total">04</span>
+            </p>
+            <div id="camera-thumbs" class="camera-thumbs"><!-- diisi oleh app.js --></div>
+
+            <div class="mirror-settings">
+              <p class="mirror-settings__title">MIRROR SETTINGS</p>
+              <label class="mirror-toggle">
+                <span class="mirror-toggle__label">Mirror Preview <small>(Tampilan)</small></span>
+                <span class="mirror-toggle__switch">
+                  <input type="checkbox" id="toggle-mirror-preview" checked />
+                  <span class="mirror-toggle__track"><span class="mirror-toggle__thumb"></span></span>
+                </span>
+              </label>
+              <label class="mirror-toggle">
+                <span class="mirror-toggle__label">Mirror Output <small>(Hasil)</small></span>
+                <span class="mirror-toggle__switch">
+                  <input type="checkbox" id="toggle-mirror-output" />
+                  <span class="mirror-toggle__track"><span class="mirror-toggle__thumb"></span></span>
+                </span>
+              </label>
+            </div>
+
+            <div class="flash-tip flash-tip--panel">
+              <img src="assets/mascot/flashbot-welcome.png" alt="Flash-Bot" class="flash-tip__img" />
+              <div class="flash-tip__bubble" id="camera-flash-message">Cari pose terbaikmu!</div>
+            </div>
+
+            <button type="button" id="btn-capture" class="btn btn--primary btn--lg btn--capture">CAPTURE</button>
+          </div>
+        </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: PREVIEW ============ -->
+  <section id="screen-preview" class="screen" data-screen="preview">
+    <div class="retro-window">
+      <div class="retro-window__titlebar">
+        <span class="retro-window__title">
+          <img src="assets/branding/favicon-16.png" alt="" class="retro-window__icon" />
+          Preview.exe
+        </span>
+        <span class="retro-window__controls">
+          <span class="retro-btn retro-btn--min">&#95;</span>
+          <span class="retro-btn retro-btn--max">&#9633;</span>
+          <span class="retro-btn retro-btn--close">&times;</span>
+        </span>
+      </div>
+
+      <div class="retro-window__body preview-body">
+        <div class="screen-toolbar">
+          <button type="button" id="btn-back-to-camera" class="btn-back">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+            Kembali
+          </button>
+          <div class="screen-toolbar__title">
+            <h2>CHECK YOUR PHOTOS</h2>
+            <p>Pastikan semua fotomu sudah oke.</p>
+          </div>
+          <span class="screen-toolbar__spacer" aria-hidden="true"></span>
+        </div>
+
+        <div class="preview-grid-wrap">
+          <div id="preview-grid" class="preview-grid"><!-- diisi oleh app.js --></div>
+        </div>
+
+        <button type="button" id="btn-continue" class="btn btn--primary btn--lg">CONTINUE &rarr;</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: PROCESSING ============ -->
+  <section id="screen-processing" class="screen" data-screen="processing">
+    <div class="processing-box">
+      <div class="processing-box__left">
+        <img src="assets/mascot/flashbot-processing.png" alt="Flash-Bot memproses" class="processing-box__mascot" />
+      </div>
+      <div class="processing-box__right">
+        <h2>CREATING YOUR MEMORY...</h2>
+
+        <ul class="processing-checklist" id="processing-checklist">
+          <li data-step="20"><span class="check-icon"></span> Preparing photos</li>
+          <li data-step="40"><span class="check-icon"></span> Cropping images</li>
+          <li data-step="60"><span class="check-icon"></span> Applying frame</li>
+          <li data-step="80"><span class="check-icon"></span> Creating result</li>
+          <li data-step="100"><span class="check-icon"></span> Ready</li>
+        </ul>
+
+        <div class="processing-progress">
+          <div class="processing-progress__bar" id="processing-progress-bar"></div>
+        </div>
+        <p class="processing-progress__percent" id="processing-progress-percent">0%</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: RESULT ============ -->
+  <section id="screen-result" class="screen" data-screen="result">
+    <div class="retro-window">
+      <div class="retro-window__titlebar">
+        <span class="retro-window__title">
+          <img src="assets/branding/favicon-16.png" alt="" class="retro-window__icon" />
+          Memory.exe
+        </span>
+        <span class="retro-window__controls">
+          <span class="retro-btn retro-btn--min">&#95;</span>
+          <span class="retro-btn retro-btn--max">&#9633;</span>
+          <span class="retro-btn retro-btn--close">&times;</span>
+        </span>
+      </div>
+
+      <div class="retro-window__body result-body">
+        <div class="result-layout">
+          <div class="result-layout__photo">
+            <img id="result-image" src="" alt="Hasil HIMSI Photobooth" class="result-image" />
+          </div>
+          <div class="result-layout__info">
+            <h2 class="result-heading">AWESOME MEMORY CAPTURED!</h2>
+            <p class="result-subheading">Your photo is ready!</p>
+
+            <div class="result-actions">
+              <button type="button" id="btn-download" class="btn btn--primary btn--lg">DOWNLOAD</button>
+              <button type="button" id="btn-take-another" class="btn btn--ghost btn--lg">TAKE ANOTHER</button>
+            </div>
+
+            <div class="flash-tip flash-tip--center">
+              <img src="assets/mascot/flashbot-welcome.png" alt="Flash-Bot" class="flash-tip__img" />
+              <div class="flash-tip__bubble">Satu sistem, banyak cerita!</div>
+            </div>
+
+            <button type="button" id="btn-back-home" class="btn-back btn-back--wide">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+              KEMBALI KE BERANDA
+            </button>
+
+            <p class="result-note">QR sharing membutuhkan backend/cloud upload service dan dapat ditambahkan pada versi berikutnya.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
