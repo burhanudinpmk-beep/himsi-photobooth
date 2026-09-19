@@ -1,0 +1,680 @@
+/* ==========================================================================
+   style.css — Design tokens, base layout, boot & landing screens
+   ========================================================================== */
+
+:root {
+  --navy: #0A2558;
+  --navy-dark: #061A3D;
+
+  --gold: #FFB800;
+  --gold-light: #FFD34E;
+
+  --white: #FFFFFF;
+  --surface: #F5F7FA;
+
+  --retro-gray: #D9D9D9;
+  --retro-dark: #171717;
+
+  --success: #16833B;
+  --danger: #C9362B;
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
+  --transition-fast: 180ms;
+  --transition-normal: 300ms;
+
+  --font-display: 'Poppins', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Consolas', 'Courier New', monospace;
+  --font-retro: 'Pixelify Sans', var(--font-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  font-family: var(--font-display);
+  background: var(--surface);
+  color: var(--retro-dark);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+button {
+  font-family: inherit;
+}
+
+#app {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* -------------------------------------------------------------------- */
+/* Screen management                                                      */
+/* -------------------------------------------------------------------- */
+
+.screen {
+  display: none;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  overflow: hidden;
+}
+
+.screen.is-active {
+  display: flex;
+}
+
+.is-hidden {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .screen.is-active {
+    animation: screenEnter 320ms cubic-bezier(.22, 1, .36, 1);
+  }
+}
+
+@keyframes screenEnter {
+  from { opacity: 0; transform: translateY(12px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* -------------------------------------------------------------------- */
+/* BOOT SCREEN                                                            */
+/* -------------------------------------------------------------------- */
+
+#screen-boot {
+  background: var(--navy);
+  background-image: radial-gradient(circle at 50% 30%, var(--navy) 0%, var(--navy-dark) 100%);
+}
+
+.boot-box {
+  text-align: center;
+  color: var(--white);
+  max-width: 360px;
+  width: 100%;
+}
+
+.boot-box__icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
+  border-radius: var(--radius-md);
+}
+
+.boot-box__title {
+  font-weight: 800;
+  font-size: 1.5rem;
+  letter-spacing: 2px;
+  margin: 0 0 8px;
+  color: var(--gold);
+}
+
+.boot-box__subtitle {
+  font-family: var(--font-retro);
+  font-size: 0.9rem;
+  color: var(--retro-gray);
+  margin: 0 0 20px;
+}
+
+.boot-progress {
+  width: 100%;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid var(--gold);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.boot-progress__bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  transition: width 60ms linear;
+}
+
+.boot-box__percent {
+  font-family: var(--font-retro);
+  color: var(--gold-light);
+  margin-top: 10px;
+}
+
+/* -------------------------------------------------------------------- */
+/* RETRO WINDOW SHELL (dipakai di semua screen bertema Photo.exe)         */
+/* -------------------------------------------------------------------- */
+
+.retro-window {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  background: var(--white);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.retro-window__titlebar {
+  background: linear-gradient(90deg, var(--navy), var(--navy-dark));
+  color: var(--white);
+  padding: 0 20px;
+  height: 54px;
+  flex: 0 0 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 0.98rem;
+}
+
+.retro-window__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-retro);
+  letter-spacing: 0.5px;
+}
+
+.retro-window__icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+}
+
+.retro-window__controls {
+  display: flex;
+  gap: 6px;
+}
+
+.retro-btn {
+  width: 24px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: default;
+}
+
+.retro-btn--close:hover {
+  background: var(--danger);
+}
+
+.retro-window__menubar {
+  background: var(--retro-gray);
+  color: var(--retro-dark);
+  padding: 0 20px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 0.85rem;
+  font-family: var(--font-retro);
+  border-bottom: 1px solid #bbb;
+}
+
+.retro-window__body {
+  flex: 1;
+  min-height: 0;
+  padding: 28px;
+  position: relative;
+  background: var(--surface);
+}
+
+.retro-window__statusbar {
+  background: var(--navy-dark);
+  color: var(--retro-gray);
+  padding: 0 20px;
+  height: 30px;
+  flex: 0 0 30px;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-retro);
+}
+
+/* -------------------------------------------------------------------- */
+/* SCREEN TOOLBAR (Frames/Camera/Preview) + tombol Kembali                */
+/* -------------------------------------------------------------------- */
+
+.screen-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.screen-toolbar__title {
+  flex: 1;
+  text-align: center;
+}
+
+.screen-toolbar__title h2 {
+  color: var(--navy);
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  margin: 0 0 2px;
+  letter-spacing: 1px;
+}
+
+.screen-toolbar__title p {
+  color: #667;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.screen-toolbar__spacer {
+  flex: 0 0 auto;
+  width: 96px; /* seimbangkan lebar tombol Kembali supaya judul benar-benar center */
+}
+
+.btn-back {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--white);
+  color: var(--navy);
+  border: 2px solid var(--navy);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn-back:hover {
+  background: var(--navy);
+  color: var(--white);
+  transform: translateX(-3px);
+}
+
+.btn-back:active {
+  transform: translateX(-1px) scale(0.98);
+}
+
+.btn-back--wide {
+  width: 100%;
+  justify-content: center;
+  margin: 6px 0 14px;
+}
+
+.live-indicator {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-retro);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--danger);
+  letter-spacing: 0.5px;
+}
+
+.live-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .live-dot {
+    animation: livePulse 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* -------------------------------------------------------------------- */
+/* LANDING SCREEN                                                         */
+/* -------------------------------------------------------------------- */
+
+.landing-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding-inline: clamp(50px, 7vw, 120px);
+  padding-block: clamp(24px, 5vh, 70px);
+  isolation: isolate;
+}
+
+/* Dekorasi teknologi sangat halus di background landing (opacity rendah) */
+.landing-body::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.06;
+  background-image:
+    radial-gradient(circle, var(--navy) 1.5px, transparent 1.5px),
+    linear-gradient(var(--navy) 1px, transparent 1px),
+    linear-gradient(90deg, var(--navy) 1px, transparent 1px);
+  background-size: 28px 28px, 56px 56px, 56px 56px;
+  background-position: 0 0, 0 0, 0 0;
+}
+
+.himsi-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  letter-spacing: 0.08em;
+  margin: 0 0 18px;
+  font-size: clamp(18px, 1.5vw, 25px);
+  font-weight: 800;
+  color: var(--navy);
+  position: relative;
+  z-index: 1;
+}
+
+.himsi-brand__icon {
+  width: 1.1em;
+  height: 1.1em;
+  border-radius: 5px;
+  flex: 0 0 auto;
+}
+
+.himsi-brand span {
+  color: var(--gold);
+  font-weight: 800;
+}
+
+.landing-hero {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  align-items: center;
+  gap: 24px;
+}
+
+.landing-hero__text {
+  min-width: 0;
+}
+
+.landing-hero__title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(44px, 5vw, 92px);
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+  color: var(--navy);
+  margin: 0 0 22px;
+}
+
+.accent-underline {
+  position: relative;
+  display: inline-block;
+  color: var(--navy);
+}
+
+.accent-underline::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 0.06em;
+  height: 0.14em;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  border-radius: 4px;
+  z-index: -1;
+}
+
+.landing-hero__subtitle {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(15px, 1.35vw, 20px);
+  line-height: 1.55;
+  color: #26364f;
+  margin: 0 0 28px;
+  max-width: 560px;
+}
+
+.mini-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.mini-badges li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #55617a;
+}
+
+.mini-badges__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex: 0 0 auto;
+}
+
+.landing-hero__mascot {
+  position: relative;
+  align-self: end;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding-top: 80px;
+  z-index: 2;
+}
+
+.mascot-img {
+  filter: drop-shadow(0 18px 24px rgba(6, 26, 61, 0.25));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mascot-img {
+    animation: mascot-float 3.2s ease-in-out infinite;
+  }
+}
+
+.mascot-img--welcome {
+  width: clamp(300px, 32vw, 570px);
+  max-height: 68vh;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+@keyframes mascot-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.speech-bubble {
+  position: absolute;
+  top: 4%;
+  left: 2%;
+  z-index: 4;
+  background: var(--white);
+  border: 2px solid var(--navy);
+  border-radius: var(--radius-md);
+  padding: 9px 18px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--navy);
+  box-shadow: 0 6px 14px rgba(6, 26, 61, 0.15);
+  white-space: nowrap;
+}
+
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 30px;
+  border-width: 10px 8px 0;
+  border-style: solid;
+  border-color: var(--navy) transparent transparent;
+}
+
+/* decorative retro bits */
+.deco {
+  position: absolute;
+  color: var(--gold);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.deco--star {
+  top: 16px;
+  left: 16px;
+  font-size: 1.4rem;
+}
+
+.deco--cursor {
+  bottom: 24px;
+  right: 40px;
+  font-size: 1.2rem;
+  color: var(--navy);
+  transform: rotate(20deg);
+}
+
+.sticky-note {
+  position: absolute;
+  top: 40px;
+  right: 50px;
+  z-index: 2;
+  background: var(--gold-light);
+  color: var(--retro-dark);
+  padding: 10px 14px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  transform: rotate(3deg);
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.15);
+  border-radius: 2px;
+  max-width: 150px;
+  line-height: 1.4;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.section-header h2 {
+  color: var(--navy);
+  font-size: 1.6rem;
+  margin: 0 0 6px;
+  letter-spacing: 1px;
+}
+
+.section-header p {
+  color: #667;
+  margin: 0;
+}
+
+/* -------------------------------------------------------------------- */
+/* LANDING ENTRANCE ANIMATION (stagger ringan, tidak menghalangi klik)    */
+/* -------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .himsi-brand {
+    animation: fadeSlideLeft 420ms cubic-bezier(.22,1,.36,1) both;
+  }
+  .landing-hero__title {
+    animation: fadeSlideUp 420ms cubic-bezier(.22,1,.36,1) both 80ms;
+  }
+  .landing-hero__subtitle {
+    animation: fadeIn 420ms ease-out both 180ms;
+  }
+  .landing-hero__text .btn--cta {
+    animation: fadeSlideUp 420ms cubic-bezier(.22,1,.36,1) both 260ms;
+  }
+  .mini-badges {
+    animation: fadeIn 420ms ease-out both 340ms;
+  }
+  .landing-hero__mascot {
+    animation: fadeSlideUp 500ms cubic-bezier(.22,1,.36,1) both 120ms;
+  }
+  .speech-bubble {
+    transform-origin: bottom left;
+    animation: bubblePop 250ms cubic-bezier(.22,1,.36,1) both 480ms;
+  }
+  .deco, .sticky-note {
+    animation: fadeIn 500ms ease-out both 400ms;
+  }
+}
+
+@keyframes fadeSlideLeft {
+  from { opacity: 0; transform: translateX(-16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes bubblePop {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Micro pop reusable (mis. Flash-Bot speech berganti teks) */
+@media (prefers-reduced-motion: no-preference) {
+  .pulse-pop {
+    animation: popIn 250ms cubic-bezier(.22,1,.36,1);
+  }
+}
+
+@keyframes popIn {
+  0%   { transform: scale(0.85); opacity: 0.4; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot-img,
+  .processing-box__mascot,
+  .live-dot {
+    animation: none !important;
+  }
+}

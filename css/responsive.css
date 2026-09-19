@@ -1,0 +1,218 @@
+/* ==========================================================================
+   responsive.css — Tablet & mobile adjustments
+   Prioritas desktop: 1440x900, support 1920x1080 / 1366x768 / 1280x720
+   ========================================================================== */
+
+/* Laptop dengan tinggi layar terbatas (mis. 1366x768) — perkecil sedikit agar tetap satu layar penuh tanpa scroll */
+@media (max-height: 800px) {
+  .landing-hero__title {
+    font-size: clamp(40px, 4.4vw, 68px);
+    margin-bottom: 14px;
+  }
+
+  .landing-hero__subtitle {
+    margin-bottom: 18px;
+  }
+
+  .mascot-img--welcome {
+    max-height: 60vh;
+  }
+
+  .landing-hero__mascot {
+    padding-top: 40px;
+  }
+
+  .landing-body {
+    padding-block: clamp(16px, 3vh, 32px);
+  }
+}
+
+/* Tablet: layout landing ditumpuk, camera di atas / session panel di bawah */
+@media (max-width: 1024px) {
+  .landing-hero {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    gap: 4px;
+    overflow-y: auto;
+  }
+
+  .landing-hero__text {
+    order: 2;
+  }
+
+  .landing-hero__mascot {
+    order: 1;
+    align-self: center;
+    height: auto;
+    padding-top: 0;
+    margin: 0 auto;
+  }
+
+  .mascot-img--welcome {
+    max-height: 34vh;
+  }
+
+  .himsi-brand,
+  .mini-badges {
+    justify-content: center;
+  }
+
+  .landing-hero__subtitle {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .speech-bubble {
+    left: 50%;
+    top: -10px;
+    transform: translateX(-50%);
+  }
+
+  .speech-bubble::after {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .sticky-note {
+    top: 8px;
+    right: 8px;
+  }
+
+  .camera-live {
+    flex-direction: column;
+    min-height: unset;
+  }
+
+  .camera-live__video-wrap {
+    flex: 0 0 auto;
+    height: 46vh;
+  }
+
+  .camera-live__panel {
+    flex: 0 0 auto;
+  }
+
+  .processing-box {
+    flex-direction: column;
+    text-align: center;
+    gap: 20px;
+  }
+
+  .processing-box__right {
+    text-align: center;
+  }
+
+  .processing-checklist {
+    text-align: left;
+  }
+
+  .result-layout {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .result-layout__info {
+    text-align: center;
+  }
+
+  .result-actions {
+    justify-content: center;
+  }
+
+  .result-image {
+    max-height: 42vh;
+  }
+
+  .screen-toolbar__spacer {
+    display: none;
+  }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .screen {
+    padding: 12px;
+  }
+
+  .retro-window__body {
+    padding: 18px;
+  }
+
+  .landing-body {
+    padding-inline: 20px;
+    padding-block: 16px;
+  }
+
+  .landing-hero__title {
+    font-size: clamp(32px, 9vw, 44px);
+  }
+
+  .mascot-img--welcome {
+    width: auto;
+    max-height: 24vh;
+  }
+
+  .landing-hero__mascot {
+    padding-top: 8px;
+  }
+
+  .mini-badges {
+    gap: 6px 14px;
+  }
+
+  .sticky-note {
+    display: none;
+  }
+
+  .frame-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .result-actions {
+    flex-direction: column;
+  }
+
+  .btn--lg {
+    width: 100%;
+  }
+
+  .camera-live__video-wrap {
+    height: 38vh;
+  }
+
+  .countdown-label {
+    font-size: 3rem;
+  }
+
+  .dialog {
+    padding: 18px;
+  }
+
+  .screen-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .btn-back {
+    padding: 8px 12px;
+    font-size: 0.78rem;
+  }
+
+  .screen-toolbar__title h2 {
+    font-size: 1.05rem;
+  }
+
+  .result-image {
+    max-height: 34vh;
+  }
+
+  .mirror-settings__title {
+    font-size: 0.68rem;
+  }
+
+  .mirror-toggle__label {
+    font-size: 0.76rem;
+  }
+}
