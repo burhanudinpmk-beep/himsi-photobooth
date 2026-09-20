@@ -1,197 +1,23 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <!-- =========================================
-         BASIC DOCUMENT SETTINGS
-    ========================================== -->
-    <meta charset="UTF-8" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HIMSI Photobooth — Photo.exe</title>
+<meta name="description" content="HIMSI Photobooth — Retro Tech Photobooth Experience untuk stand HIMSI Sistem Informasi di PKKMB Universitas PGRI Pontianak." />
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    />
+<link rel="icon" type="image/png" sizes="180x180" href="assets/branding/favicon-180.png" />
+<link rel="icon" type="image/png" sizes="48x48" href="assets/branding/favicon-48.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="assets/branding/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="assets/branding/favicon-16.png" />
 
-    <!-- =========================================
-         PRIMARY SEO
-    ========================================== -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Pixelify+Sans:wght@500;600;700&display=swap" rel="stylesheet" />
 
-    <title>HIMSI UPGRI PNK</title>
-
-    <meta
-        name="description"
-        content="HIMSI Photobooth adalah photobooth digital interaktif Himpunan Mahasiswa Sistem Informasi Universitas PGRI Pontianak. Pilih frame HIMSI, ambil foto, dan abadikan momen seru bersama Sistem Informasi."
-    />
-
-    <meta
-        name="keywords"
-        content="HIMSI Photobooth, HIMSI, HIMSI META, Sistem Informasi, Universitas PGRI Pontianak, UPGRI Pontianak, Himpunan Mahasiswa Sistem Informasi, Photobooth HIMSI, Photobooth Pontianak, Photo.exe, PKKMB Universitas PGRI Pontianak, PKKMB Sistem Informasi"
-    />
-
-    <meta
-        name="author"
-        content="HIMSI Universitas PGRI Pontianak"
-    />
-
-    <meta
-        name="creator"
-        content="HIMSI Universitas PGRI Pontianak"
-    />
-
-    <meta
-        name="publisher"
-        content="HIMSI Universitas PGRI Pontianak"
-    />
-
-    <!-- Memperbolehkan Google mengindeks halaman -->
-    <meta
-        name="robots"
-        content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
-    />
-
-    <meta
-        name="googlebot"
-        content="index, follow, max-image-preview:large, max-snippet:-1"
-    />
-
-    <meta name="language" content="Indonesian" />
-    <meta name="theme-color" content="#0A2558" />
-
-    <!-- =========================================
-         CANONICAL URL
-    ========================================== -->
-
-    <link
-        rel="canonical"
-        href="https://himsi-photobooth.vercel.app/"
-    />
-
-    <!-- =========================================
-         OPEN GRAPH
-         Untuk WhatsApp, Facebook, Discord, dll.
-    ========================================== -->
-
-    <meta property="og:type" content="website" />
-
-    <meta
-        property="og:title"
-        content="HIMSI Photobooth | Photo.exe"
-    />
-
-    <meta
-        property="og:description"
-        content="Abadikan momen serumu bersama HIMSI Sistem Informasi Universitas PGRI Pontianak melalui Photo.exe — Retro Tech Photobooth Experience."
-    />
-
-    <meta
-        property="og:url"
-        content="https://himsi-photobooth.vercel.app/"
-    />
-
-    <meta
-        property="og:site_name"
-        content="HIMSI Photobooth"
-    />
-
-    <meta
-        property="og:locale"
-        content="id_ID"
-    />
-
-    <meta
-        property="og:image"
-        content="https://himsi-photobooth.vercel.app/assets/branding/og-image.png"
-    />
-
-    <meta
-        property="og:image:width"
-        content="1200"
-    />
-
-    <meta
-        property="og:image:height"
-        content="630"
-    />
-
-    <meta
-        property="og:image:alt"
-        content="HIMSI Photobooth Sistem Informasi Universitas PGRI Pontianak"
-    />
-
-    <!-- =========================================
-         TWITTER / X CARD
-    ========================================== -->
-
-    <meta
-        name="twitter:card"
-        content="summary_large_image"
-    />
-
-    <meta
-        name="twitter:title"
-        content="HIMSI Photobooth | Photo.exe"
-    />
-
-    <meta
-        name="twitter:description"
-        content="Photobooth digital HIMSI Sistem Informasi Universitas PGRI Pontianak."
-    />
-
-    <meta
-        name="twitter:image"
-        content="https://himsi-photobooth.vercel.app/assets/branding/og-image.png"
-    />
-
-    <!-- FAVICON HIMSI -->
-    <link rel="icon" href="/assets/branding/logo-icon.png" type="image/png">
-    <link rel="shortcut icon" href="/assets/branding/logo-icon.png" type="image/png">
-    <link rel="apple-touch-icon" href="/assets/branding/logo-icon.png">
-    <!-- =========================================
-         GOOGLE FONTS
-    ========================================== -->
-
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-
-    <link
-        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Pixelify+Sans:wght@500;600;700&display=swap"
-        rel="stylesheet"
-    />
-
-    <!-- =========================================
-         STRUCTURED DATA / SCHEMA.ORG
-    ========================================== -->
-
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "HIMSI Photobooth",
-        "alternateName": "Photo.exe",
-        "url": "https://himsi-photobooth.vercel.app/",
-        "description": "HIMSI Photobooth adalah photobooth digital interaktif dari Himpunan Mahasiswa Sistem Informasi Universitas PGRI Pontianak.",
-        "applicationCategory": "MultimediaApplication",
-        "operatingSystem": "Web Browser",
-        "inLanguage": "id-ID",
-        "isAccessibleForFree": true,
-        "creator": {
-            "@type": "Organization",
-            "name": "HIMSI Universitas PGRI Pontianak"
-        },
-        "publisher": {
-            "@type": "Organization",
-            "name": "HIMSI Universitas PGRI Pontianak"
-        }
-    }
-    </script>
-
-    <!-- =========================================
-         WEBSITE CSS
-    ========================================== -->
-
-    <link rel="stylesheet" href="css/style.css" />
-    <link rel="stylesheet" href="css/components.css" />
-    <link rel="stylesheet" href="css/responsive.css" />
-
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/components.css" />
+<link rel="stylesheet" href="css/responsive.css" />
 </head>
 <body>
 
