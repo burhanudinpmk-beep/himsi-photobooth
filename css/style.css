@@ -326,6 +326,34 @@ button {
   margin: 6px 0 14px;
 }
 
+/* FULL CAMERA — perbesar live camera ke fullscreen satu layar (toolbar Camera.exe) */
+.btn-full-camera {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--navy);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn-full-camera:hover:not(:disabled) {
+  background: var(--navy-dark);
+  transform: translateY(-1px);
+}
+
+.btn-full-camera:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .live-indicator {
   flex: 0 0 auto;
   display: inline-flex;
@@ -334,26 +362,104 @@ button {
   font-family: var(--font-retro);
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--danger);
   letter-spacing: 0.5px;
+  color: #99a;
 }
 
 .live-dot {
   width: 9px;
   height: 9px;
   border-radius: 50%;
+  background: #99a;
+}
+
+/* Status: LIVE (merah, berdenyut) */
+.live-indicator--live {
+  color: var(--danger);
+}
+.live-indicator--live .live-dot {
+  background: var(--danger);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .live-indicator--live .live-dot {
+    animation: livePulse 1.5s ease-in-out infinite;
+  }
+}
+
+/* Status: CONNECTING... (gold) */
+.live-indicator--connecting {
+  color: var(--gold);
+}
+.live-indicator--connecting .live-dot {
+  background: var(--gold);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .live-indicator--connecting .live-dot {
+    animation: livePulse 0.8s ease-in-out infinite;
+  }
+}
+
+/* Status: CAMERA ERROR (merah tegas, tanpa animasi) */
+.live-indicator--error {
+  color: var(--danger);
+}
+.live-indicator--error .live-dot {
   background: var(--danger);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .live-dot {
-    animation: livePulse 1.5s ease-in-out infinite;
-  }
+/* Status: CAMERA OFF (netral/diam) */
+.live-indicator--off {
+  color: #99a;
+}
+.live-indicator--off .live-dot {
+  background: #99a;
 }
 
 @keyframes livePulse {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
+}
+
+/* -------------------------------------------------------------------- */
+/* CAMERA SOURCE SELECTOR (dropdown webcam internal/USB di toolbar)       */
+/* -------------------------------------------------------------------- */
+
+.camera-source-wrap {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.camera-source-label {
+  font-family: var(--font-retro);
+  font-size: 0.68rem;
+  letter-spacing: 0.5px;
+  color: #889;
+  white-space: nowrap;
+}
+
+.camera-source-select {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--white);
+  border: 2px solid var(--retro-gray);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  max-width: 180px;
+  cursor: pointer;
+}
+
+.camera-source-select:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.camera-source-select:focus-visible {
+  border-color: var(--gold);
+  outline: none;
 }
 
 /* -------------------------------------------------------------------- */

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>HIMSI UPGRI PNK</title>
+<title>HIMSI UPGRI</title>
 <meta name="description" content="HIMSI Photobooth — Retro Tech Photobooth Experience untuk stand HIMSI Sistem Informasi di PKKMB Universitas PGRI Pontianak." />
 
 <link rel="icon" type="image/png" sizes="180x180" href="assets/branding/favicon-180.png" />
@@ -161,7 +161,7 @@
       </div>
 
       <div class="retro-window__body camera-body">
-        <div class="screen-toolbar">
+        <div class="screen-toolbar camera-toolbar">
           <button type="button" id="btn-back-to-frames" class="btn-back">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
             Kembali
@@ -169,7 +169,18 @@
           <div class="screen-toolbar__title">
             <h2>CAMERA SESSION</h2>
           </div>
-          <span class="live-indicator is-hidden" id="live-indicator"><span class="live-dot"></span> LIVE</span>
+          <div class="camera-source-wrap is-hidden" id="camera-source-wrap">
+            <label for="camera-source-select" class="camera-source-label">CAMERA SOURCE</label>
+            <select id="camera-source-select" class="camera-source-select"></select>
+          </div>
+          <span class="live-indicator" id="live-indicator">
+            <span class="live-dot" id="live-dot"></span>
+            <span id="live-indicator-text">CAMERA OFF</span>
+          </span>
+          <button type="button" id="btn-full-camera" class="btn-full-camera is-hidden" title="Perbesar live camera ke layar penuh" disabled>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+            FULL CAMERA
+          </button>
         </div>
 
         <div class="camera-content">
@@ -178,7 +189,7 @@
         <div id="camera-permission" class="camera-gate">
           <img src="assets/mascot/flashbot-welcome.png" alt="Flash-Bot" class="camera-gate__img" />
           <h3>CAMERA ACCESS REQUIRED</h3>
-          <p>Photobooth membutuhkan akses kamera untuk mengambil fotomu.<br/>Foto hanya diambil ketika kamu menekan tombol Capture.</p>
+          <p>Photobooth membutuhkan akses kamera untuk mengambil fotomu.<br/>Foto hanya diambil ketika kamu menekan tombol Capture. Mendukung webcam internal maupun USB eksternal.</p>
           <button type="button" id="btn-enable-camera" class="btn btn--primary btn--lg">AKTIFKAN KAMERA</button>
         </div>
 
@@ -190,48 +201,72 @@
           <button type="button" id="btn-retry-camera" class="btn btn--primary btn--lg">TRY AGAIN</button>
         </div>
 
-        <!-- Live camera -->
-        <div id="camera-live" class="camera-live is-hidden">
-          <div class="camera-live__video-wrap">
+        <!-- Live camera: video jadi fokus utama, controls jadi bar bawah yang ringkas.
+             Juga berperan sebagai container Fullscreen API (lihat btn-full-camera) —
+             supaya status LIVE, photo counter, CAPTURE, dan mirror ikut masuk fullscreen,
+             bukan cuma elemen <video> saja. -->
+        <div id="camera-live" class="camera-live camera-fullscreen-container is-hidden">
+          <div class="camera-fullscreen-topbar">
+            <span class="camera-fullscreen-topbar__live"><span class="live-dot live-dot--static"></span> LIVE</span>
+            <span class="camera-fullscreen-topbar__progress">PHOTO <span id="camera-photo-current-fs">01</span>/<span id="camera-photo-total-fs">04</span></span>
+            <button type="button" id="btn-exit-fullscreen" class="camera-fullscreen-topbar__exit">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              EXIT FULLSCREEN
+            </button>
+          </div>
+
+          <div class="camera-view">
             <video id="camera-video" autoplay playsinline muted></video>
+            <div class="camera-safe-frame" aria-hidden="true"></div>
+
+            <p class="camera-view__frame-tag" id="camera-frame-name">FRAME_04.PNG</p>
+
+            <div class="camera-flash-toast">
+              <img src="assets/mascot/flashbot-welcome.png" alt="Flash-Bot" class="camera-flash-toast__mascot" />
+              <span id="camera-flash-message">Cari pose terbaikmu!</span>
+            </div>
 
             <div id="countdown-overlay" class="countdown-overlay">
               <span id="countdown-label" class="countdown-label"></span>
             </div>
             <div id="countdown-flash" class="countdown-flash"></div>
+
+            <div id="camera-disconnected" class="camera-disconnected-overlay is-hidden">
+              <h3>CAMERA DISCONNECTED</h3>
+              <p>Webcam terputus. Sambungkan kembali kamera lalu pilih kamera.</p>
+              <button type="button" id="btn-refresh-camera" class="btn btn--primary">REFRESH CAMERA</button>
+            </div>
           </div>
 
-          <div class="camera-live__panel">
-            <p class="camera-live__frame-name" id="camera-frame-name">FRAME_04.PNG</p>
-            <p class="camera-live__progress-text">
-              PHOTO <span id="camera-photo-current">01</span> / <span id="camera-photo-total">04</span>
-            </p>
-            <div id="camera-thumbs" class="camera-thumbs"><!-- diisi oleh app.js --></div>
+          <div class="camera-controls">
+            <div class="camera-controls__left">
+              <p class="camera-controls__progress-text">
+                PHOTO <span id="camera-photo-current">01</span>/<span id="camera-photo-total">04</span>
+              </p>
+              <div id="camera-thumbs" class="camera-thumbs"><!-- diisi oleh app.js --></div>
+            </div>
 
-            <div class="mirror-settings">
-              <p class="mirror-settings__title">MIRROR SETTINGS</p>
-              <label class="mirror-toggle">
-                <span class="mirror-toggle__label">Mirror Preview <small>(Tampilan)</small></span>
-                <span class="mirror-toggle__switch">
+            <button type="button" id="btn-capture" class="btn-capture-main">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              CAPTURE
+            </button>
+
+            <div class="camera-controls__right">
+              <label class="mirror-chip">
+                <span class="mirror-chip__switch">
                   <input type="checkbox" id="toggle-mirror-preview" checked />
                   <span class="mirror-toggle__track"><span class="mirror-toggle__thumb"></span></span>
                 </span>
+                <span class="mirror-chip__label">Mirror Preview</span>
               </label>
-              <label class="mirror-toggle">
-                <span class="mirror-toggle__label">Mirror Output <small>(Hasil)</small></span>
-                <span class="mirror-toggle__switch">
+              <label class="mirror-chip">
+                <span class="mirror-chip__switch">
                   <input type="checkbox" id="toggle-mirror-output" />
                   <span class="mirror-toggle__track"><span class="mirror-toggle__thumb"></span></span>
                 </span>
+                <span class="mirror-chip__label">Mirror Output</span>
               </label>
             </div>
-
-            <div class="flash-tip flash-tip--panel">
-              <img src="assets/mascot/flashbot-welcome.png" alt="Flash-Bot" class="flash-tip__img" />
-              <div class="flash-tip__bubble" id="camera-flash-message">Cari pose terbaikmu!</div>
-            </div>
-
-            <button type="button" id="btn-capture" class="btn btn--primary btn--lg btn--capture">CAPTURE</button>
           </div>
         </div>
 

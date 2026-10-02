@@ -342,76 +342,250 @@
   line-height: 1.6;
 }
 
+/* Camera.exe: video adalah fokus utama (~80% tinggi content), control bar
+   ringkas di bawah (~20%). Lihat juga .camera-toolbar untuk CAMERA SOURCE. */
 .camera-live {
   display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
+  gap: 10px;
+}
+
+/* -------------------------------------------------------------------- */
+/* FULL CAMERA — Fullscreen API pada seluruh #camera-live (video, status,  */
+/* photo counter, CAPTURE, mirror ikut masuk; bukan cuma elemen <video>). */
+/* -------------------------------------------------------------------- */
+
+.camera-fullscreen-container:fullscreen,
+.camera-fullscreen-container:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  padding: 16px;
+  background: var(--navy-dark);
+  gap: 12px;
+}
+
+/* Topbar kecil (LIVE + photo counter + EXIT FULLSCREEN) — tak terlihat di
+   mode normal, karena status/back/source sudah ada di screen-toolbar biasa;
+   dalam fullscreen, screen-toolbar ikut tersembunyi (di luar container ini)
+   jadi topbar ini mengambil alih fungsi itu di dalam layar penuh. */
+.camera-fullscreen-topbar {
+  display: none;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--white);
+  font-family: var(--font-retro);
+  font-size: 0.8rem;
+}
+
+.camera-fullscreen-container:fullscreen .camera-fullscreen-topbar,
+.camera-fullscreen-container:-webkit-full-screen .camera-fullscreen-topbar {
+  display: flex;
+}
+
+.camera-fullscreen-topbar__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.live-dot--static {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .live-dot--static {
+    animation: livePulse 1.5s ease-in-out infinite;
+  }
+}
+
+.camera-fullscreen-topbar__progress {
+  color: var(--gold-light);
+  letter-spacing: 0.5px;
+}
+
+.camera-fullscreen-topbar__exit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.camera-fullscreen-topbar__exit:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Perkecil sedikit control bar saat fullscreen supaya video mendapat porsi
+   terbesar (~88-92%) dan controls tetap ringkas (~8-12%) sesuai target. */
+.camera-fullscreen-container:fullscreen .camera-controls,
+.camera-fullscreen-container:-webkit-full-screen .camera-controls {
+  padding: 10px clamp(16px, 2.5vw, 32px);
+}
+
+.camera-view {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: #000;
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: 0 16px 40px rgba(6, 26, 61, 0.2);
 }
 
-.camera-live__video-wrap {
-  flex: 0 0 70%;
-  position: relative;
-  background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
 #camera-video {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: cover; /* crop secukupnya, JANGAN stretch wajah */
+  display: block;
 }
 
 #camera-video.is-mirrored {
   transform: scaleX(-1); /* mirror TAMPILAN saja; data hasil ditentukan terpisah oleh Mirror Output */
 }
 
-.camera-live__panel {
-  flex: 0 0 30%;
-  background: var(--white);
-  padding: clamp(16px, 2vw, 26px);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow-y: auto;
+/* Safe area — overlay UI murni, tidak pernah ikut ke hasil capture (capture
+   membaca langsung dari <video>, bukan dari DOM yang menggambar overlay ini) */
+.camera-safe-frame {
+  position: absolute;
+  inset: clamp(16px, 5%, 48px);
+  border: 1.5px dashed rgba(255, 255, 255, 0.35);
+  border-radius: var(--radius-md);
+  pointer-events: none;
+  z-index: 2;
 }
 
-.camera-live__frame-name {
+.camera-view__frame-tag {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 3;
+  margin: 0;
+  background: rgba(6, 26, 61, 0.65);
+  color: var(--gold-light);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.5px;
+}
+
+.camera-flash-toast {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(6, 26, 61, 0.7);
+  color: var(--white);
+  padding: 6px 16px 6px 6px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  max-width: calc(100% - 160px);
+}
+
+.camera-flash-toast__mascot {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+/* Overlay saat webcam terputus (USB dicabut dsb.) */
+.camera-disconnected-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: rgba(6, 26, 61, 0.92);
+  color: var(--white);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px;
+  gap: 10px;
+}
+
+.camera-disconnected-overlay h3 {
+  color: var(--danger);
+  margin: 0;
+  letter-spacing: 1px;
+  font-size: 1.2rem;
+}
+
+.camera-disconnected-overlay p {
+  margin: 0 0 10px;
+  color: var(--retro-gray);
+  max-width: 420px;
+}
+
+/* ---- Control bar bawah: progress kiri, CAPTURE tengah, mirror kanan ---- */
+
+.camera-controls {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  background: var(--white);
+  border-radius: var(--radius-md);
+  padding: 14px clamp(16px, 2.5vw, 32px);
+  box-shadow: 0 10px 24px rgba(6, 26, 61, 0.12);
+}
+
+.camera-controls__left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.camera-controls__progress-text {
   font-family: var(--font-mono);
   color: var(--navy);
   font-weight: 700;
+  font-size: 0.85rem;
   margin: 0;
-}
-
-.camera-live__progress-text {
-  font-family: var(--font-mono);
-  color: #667;
-  margin: 0 0 10px;
-  font-size: 0.9rem;
 }
 
 .camera-thumbs {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
-  margin-bottom: auto;
 }
 
 .camera-thumb {
-  width: 34px;
-  height: 34px;
+  width: 26px;
+  height: 26px;
   border-radius: var(--radius-sm);
   border: 2px solid var(--retro-gray);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   color: #99a;
 }
 
@@ -427,53 +601,72 @@
   }
 }
 
-/* -------------------------------------------------------------------- */
-/* MIRROR SETTINGS                                                        */
-/* -------------------------------------------------------------------- */
-
-.mirror-settings {
-  border-top: 1px solid var(--retro-gray);
-  border-bottom: 1px solid var(--retro-gray);
-  padding: 10px 0;
-  margin: 4px 0;
+.btn-capture-main {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(180deg, var(--gold-light), var(--gold));
+  color: var(--navy-dark);
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.5px;
+  padding: 16px 36px;
+  min-width: 180px;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 24px rgba(255, 184, 0, 0.4);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.mirror-settings__title {
-  font-family: var(--font-retro);
-  font-size: 0.72rem;
-  letter-spacing: 1px;
-  color: #889;
-  margin: 0 0 8px;
+.btn-capture-main:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(255, 184, 0, 0.5);
 }
 
-.mirror-toggle {
+.btn-capture-main:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+}
+
+.btn-capture-main:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.camera-controls__right {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-self: end;
+}
+
+/* -------------------------------------------------------------------- */
+/* MIRROR CHIP (versi ringkas, dipakai di control bar bawah Camera.exe)   */
+/* -------------------------------------------------------------------- */
+
+.mirror-chip {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 6px 0;
+  gap: 8px;
   cursor: pointer;
 }
 
-.mirror-toggle__label {
-  font-size: 0.82rem;
+.mirror-chip__label {
+  font-size: 0.72rem;
   font-weight: 600;
-  color: var(--navy);
+  color: #556;
+  white-space: nowrap;
 }
 
-.mirror-toggle__label small {
-  font-weight: 400;
-  color: #889;
-}
-
-.mirror-toggle__switch {
+.mirror-chip__switch {
   position: relative;
   flex: 0 0 auto;
-  width: 40px;
-  height: 22px;
+  width: 34px;
+  height: 19px;
 }
 
-.mirror-toggle__switch input {
+.mirror-chip__switch input {
   position: absolute;
   inset: 0;
   opacity: 0;
@@ -494,20 +687,20 @@
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 18px;
-  height: 18px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
   background: var(--white);
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
   transition: transform var(--transition-fast);
 }
 
-.mirror-toggle__switch input:checked ~ .mirror-toggle__track {
+.mirror-chip__switch input:checked ~ .mirror-toggle__track {
   background: var(--gold);
 }
 
-.mirror-toggle__switch input:checked ~ .mirror-toggle__track .mirror-toggle__thumb {
-  transform: translateX(18px);
+.mirror-chip__switch input:checked ~ .mirror-toggle__track .mirror-toggle__thumb {
+  transform: translateX(15px);
 }
 
 /* Countdown overlay */

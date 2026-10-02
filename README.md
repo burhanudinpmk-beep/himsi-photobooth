@@ -35,7 +35,7 @@ himsi-photobooth/
 │   ├── app.js           # Orkestrator utama & event wiring
 │   ├── state.js         # Single source of truth state aplikasi
 │   ├── frames.js        # Konfigurasi & koordinat slot tiap frame
-│   ├── camera.js        # getUserMedia, live preview, capture frame
+│   ├── camera.js        # getUserMedia, enumerasi/ganti device, live preview, capture, deteksi disconnect
 │   ├── countdown.js     # Sekuens GET READY! → 3 → 2 → 1 → FLASH
 │   ├── preview.js       # Render grid preview + tombol retake
 │   ├── compositor.js    # Canvas: gabung foto + overlay frame → PNG
@@ -78,7 +78,42 @@ Aplikasi tetap berjalan penuh end-to-end dengan placeholder ini — cocok untuk 
 
 ## Cara kerja Mirror (ringkas)
 
-`state.js` menyimpan `mirrorPreview` (default `true`) dan `mirrorOutput` (default `false`). Toggle di panel Mirror Settings memanggil `setMirrorPreview()` / `setMirrorOutput()`. Live preview di-mirror murni lewat CSS class `is-mirrored` pada `#camera-video` (tidak menyentuh data). Saat tombol CAPTURE ditekan, `captureFrameToBlob(video, mirrorOutput)` di `camera.js` membaca nilai `mirrorOutput` **saat itu juga** dan menerapkan `ctx.translate/scale` HANYA jika true — sekali saja, langsung ke Blob. `compositor.js` tidak pernah melakukan mirror lagi, jadi tidak mungkin dobel-mirror. Karena mirror dibaca ulang tiap capture, mengganti toggle di tengah sesi (mis. sebelum retake foto ke-2) hanya memengaruhi foto berikutnya, foto yang sudah diambil sebelumnya tidak berubah.
+`state.js` menyimpan `mirrorPreview` (default `true`) dan `mirrorOutput` (default `false`). Toggle di control bar Camera.exe memanggil `setMirrorPreview()` / `setMirrorOutput()`. Live preview di-mirror murni lewat CSS class `is-mirrored` pada `#camera-video` (tidak menyentuh data). Saat tombol CAPTURE ditekan, `captureFrameToBlob(video, mirrorOutput)` di `camera.js` membaca nilai `mirrorOutput` **saat itu juga** dan menerapkan `ctx.translate/scale` HANYA jika true — sekali saja, langsung ke Blob. `compositor.js` tidak pernah melakukan mirror lagi, jadi tidak mungkin dobel-mirror. Karena mirror dibaca ulang tiap capture, mengganti toggle di tengah sesi (mis. sebelum retake foto ke-2) hanya memengaruhi foto berikutnya, foto yang sudah diambil sebelumnya tidak berubah.
+
+## Dukungan Webcam Eksternal (USB) — CAMERA SOURCE
+
+Camera.exe **tidak mengasumsikan** webcam internal laptop. Alurnya:
+
+1. User menekan AKTIFKAN KAMERA → `getUserMedia()` diminta dengan `facingMode:'user'` sebagai default awal (device belum diketahui, label belum terisi sebelum izin diberikan).
+2. Begitu izin didapat, `listVideoInputDevices()` (`navigator.mediaDevices.enumerateDevices()` difilter `kind==='videoinput'`) dipanggil — sekarang `device.label` sudah terisi nama asli (mis. "Logitech HD Pro Webcam C920").
+3. Dropdown **CAMERA SOURCE** di toolbar Camera.exe diisi dari daftar ini. Kalau cuma ada 1 kamera, dropdown tetap tampil (berisi nama kamera itu) tapi di-disable karena tidak ada pilihan lain. Kalau ada 2+, dropdown aktif dan user bebas pilih — termasuk USB eksternal.
+4. Ganti kamera dari dropdown → `switchCamera()` di `camera.js` menghentikan seluruh track stream lama (`track.stop()`) lalu meminta stream baru dengan `deviceId: { exact }` (TANPA `facingMode`, karena keduanya tidak boleh dicampur). **Tidak reload halaman**, dan **tidak menyentuh** foto yang sudah diambil, frame yang dipilih, atau pengaturan mirror — semua itu murni di `state.js`, lepas dari stream kamera.
+5. Resolusi diminta `ideal` (1920×1080 @ 30fps), bukan `exact`, dengan fallback otomatis ke `{video:true}` polos kalau browser/device melempar `OverconstrainedError`. Canvas capture selalu memakai `video.videoWidth`/`videoHeight` asli (resolusi aktual device), bukan angka hardcode.
+
+**Deteksi webcam dicabut/dipasang lagi** (khusus USB, karena bisa lepas kapan saja saat dipakai):
+- `watchStreamDisconnect()` memasang listener `ended` pada video track yang sedang aktif — ini event yang andal untuk tahu stream MATI (beda dari `devicechange` yang cuma bilang "daftar device berubah" tanpa tahu stream kamu kena imbasnya atau tidak).
+- Begitu `ended` terpicu: overlay **CAMERA DISCONNECTED** muncul, tombol CAPTURE langsung disabled, status indikator jadi "CAMERA OFF" — tapi foto yang sudah diambil, frame, dan mirror setting **tidak disentuh sama sekali**.
+- Tombol **REFRESH CAMERA** di overlay itu akan enumerate ulang device lalu mencoba aktifkan kamera lagi.
+- `onDeviceListChange()` (wrapper `navigator.mediaDevices.addEventListener('devicechange', ...)`) dipasang terpisah untuk me-refresh isi dropdown CAMERA SOURCE setiap kali ada device dicolok/dicabut, tanpa mengganggu stream yang sedang jalan.
+- Status indikator di toolbar punya 4 keadaan nyata (bukan LIVE palsu): `CAMERA OFF` (belum aktif) → `CONNECTING...` (lagi `getUserMedia`/switch) → `LIVE` (stream jalan) → `CAMERA ERROR` (izin ditolak / device gagal).
+
+Semua listener (`devicechange`, `ended`) dibersihkan (`teardownCameraListeners()`) setiap kali meninggalkan Camera.exe atau sebelum mengaktifkan ulang, supaya tidak menumpuk/duplikat kalau user bolak-balik ke screen ini.
+
+## FULL CAMERA — mode layar penuh khusus live camera
+
+Tombol **⛶ FULL CAMERA** di toolbar Camera.exe memperbesar seluruh pengalaman kamera (bukan cuma elemen `<video>`) ke layar penuh satu laptop lewat Fullscreen API asli browser:
+
+- Yang di-fullscreen-kan adalah **`#camera-live` secara keseluruhan** (video + status LIVE + photo counter + CAPTURE + Mirror Preview/Output) — bukan `<video>` sendirian — supaya CAPTURE dan Mirror tetap bisa dipakai saat fullscreen, bukan cuma pajangan. Teknisnya: `container.requestFullscreen()` dipanggil pada elemen itu (`openCameraFullscreen()` di `app.js`), dan CSS `:fullscreen` pada `components.css` yang mengatur ulang tampilannya (topbar LIVE/counter/EXIT muncul, video jadi ~88-92% tinggi layar, control bar bawah ~8-12%).
+- **EXIT FULLSCREEN** (tombol di topbar) atau tombol **ESC** bawaan browser sama-sama berfungsi keluar — ESC ditangani otomatis oleh browser sendiri, bukan oleh kode custom, jadi tidak ada risiko konflik logic.
+- Sesi foto **tidak terganggu** oleh masuk/keluar fullscreen: capture, countdown, mirror, thumbnail progres — semuanya elemen yang sama persis, cuma ukurannya yang membesar. Tidak keluar fullscreen otomatis di tengah sesi (baru 1-2 dari N foto) — fullscreen baru otomatis ditutup (`exitCameraFullscreen()`) begitu SEMUA foto selesai dan pindah ke Preview.exe, atau saat menekan Kembali ke Frames.
+- Tombol disembunyikan total (bukan sekadar disabled) kalau browser tidak mendukung Fullscreen API sama sekali (`document.fullscreenEnabled` falsy) — tidak akan pernah melempar error ke user. Tombol juga otomatis disabled selama status kamera bukan LIVE (connecting/off/error), karena fullscreen-kan layar yang belum nyala tidak ada gunanya.
+- Tidak dipaksakan otomatis di manapun (termasuk mobile) — murni opsional, hanya aktif saat user sendiri menekan tombolnya, sesuai kebijakan Fullscreen API yang memang mewajibkan interaksi user langsung.
+
+**Catatan pengujian**: ESC key untuk keluar fullscreen adalah perilaku native browser (bukan kode kami) — di beberapa environment otomatis/headless (termasuk sandbox pengujian ini), simulasi key-press ESC tidak selalu memicu exit-fullscreen yang sama persis seperti browser sungguhan karena itu ditangani di level chrome/OS browser, bukan DOM. Di browser asli (Chrome/Edge normal), ESC akan bekerja seperti biasa. Tombol EXIT FULLSCREEN sudah diuji dan bekerja penuh sebagai jalur keluar utama yang pasti berfungsi di semua kondisi.
+
+### Diuji (lihat juga skenario TEST A–F di permintaan revisi)
+
+Di sandbox pengujian hanya tersedia satu fake camera device, jadi skenario 2-kamera diuji dengan menyisipkan satu device videoinput sintetis lewat `enumerateDevices` yang di-override di test — ini memverifikasi kode benar-benar menjalankan `switchCamera()` (stop track lama → device baru) tanpa reload dan tanpa kehilangan foto/frame/mirror, bukan sekadar lolos karena device-nya sama. Disconnect diuji dengan men-dispatch event `ended` langsung ke video track aktif. **Tetap disarankan test manual dengan webcam USB fisik sungguhan sebelum hari-H**, karena perilaku driver/OS asli (delay enumerasi, nama label, dsb.) bisa sedikit berbeda dari simulasi.
 
 ## Belum diimplementasikan (sesuai keputusan desain, bukan bug)
 
@@ -88,10 +123,14 @@ Aplikasi tetap berjalan penuh end-to-end dengan placeholder ini — cocok untuk 
 
 ## Yang perlu ditest manual sebelum hari-H
 
-1. Coba ketiga kombinasi mirror: (Preview ON/Output OFF — default), (Preview OFF/Output OFF), (Preview ON/Output ON) — pastikan hasil akhir sesuai ekspektasi masing-masing.
-2. Coba semua jalur back: Frames→Kembali, Camera→Kembali, Preview→Kembali, Result→Take Another, Result→Kembali ke Beranda.
-3. Test di laptop/browser yang akan dipakai di stand (resolusi asli, bukan hanya devtools responsive mode) — terutama kalau ada scaling display (125%/150%) yang bisa memengaruhi perhitungan vh/vw.
-4. Test dengan koneksi internet mati sebentar — pastikan font Poppins/Pixelify Sans fallback dengan baik ke font sistem tanpa merusak layout.
+1. **Pakai webcam USB eksternal sungguhan** di laptop yang akan dipakai stand: pastikan muncul di dropdown CAMERA SOURCE dengan nama yang benar, bisa dipilih, dan jadi default yang dipakai (bukan diam-diam balik ke webcam internal laptop).
+2. Kalau laptop stand punya >1 kamera (internal + USB): coba ganti-ganti dari dropdown beberapa kali berturut-turut sambil sudah ambil beberapa foto — pastikan foto yang sudah diambil tidak hilang dan frame/mirror tidak ikut ter-reset.
+3. **Full Camera**: tekan ⛶ FULL CAMERA di laptop stand sungguhan, pastikan address bar/tab Chrome benar-benar hilang, CAPTURE dan Mirror tetap kepencet dengan enak, lanjutkan sampai semua foto selesai dan pastikan otomatis keluar fullscreen lalu masuk Preview. Coba juga tekan ESC di tengah sesi untuk pastikan browser asli keluar fullscreen tanpa merusak sesi foto.
+5. Cabut webcam USB di tengah sesi (saat live/sedang akan capture) → pastikan muncul overlay CAMERA DISCONNECTED (bukan layar putih/hang), lalu colok lagi dan tekan REFRESH CAMERA → pastikan hidup lagi.
+6. Coba ketiga kombinasi mirror: (Preview ON/Output OFF — default), (Preview OFF/Output OFF), (Preview ON/Output ON) — pastikan hasil akhir sesuai ekspektasi masing-masing.
+7. Coba semua jalur back: Frames→Kembali, Camera→Kembali, Preview→Kembali, Result→Take Another, Result→Kembali ke Beranda.
+8. Test di laptop/browser yang akan dipakai di stand (resolusi asli, bukan hanya devtools responsive mode) — terutama kalau ada scaling display (125%/150%) yang bisa memengaruhi perhitungan vh/vw.
+9. Test dengan koneksi internet mati sebentar — pastikan font Poppins/Pixelify Sans fallback dengan baik ke font sistem tanpa merusak layout.
 
 ## Kalibrasi ulang koordinat frame (saat aset final sudah ada)
 

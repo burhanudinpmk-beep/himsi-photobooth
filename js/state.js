@@ -31,6 +31,9 @@ function createInitialState() {
     // Mirror Output = foto/hasil akhir ikut dibalik atau tidak. Default: preview ON, output OFF.
     mirrorPreview: true,
     mirrorOutput: false,
+    // deviceId kamera (USB eksternal / internal) yang sedang dipakai. null = belum dipilih,
+    // browser akan memilih default. Dipertahankan selama sesi (tidak reset saat back/retake).
+    selectedDeviceId: null,
   };
 }
 
@@ -98,6 +101,10 @@ export function setMirrorPreview(value) {
 
 export function setMirrorOutput(value) {
   state.mirrorOutput = Boolean(value);
+}
+
+export function setSelectedDeviceId(deviceId) {
+  state.selectedDeviceId = deviceId || null;
 }
 
 /**
