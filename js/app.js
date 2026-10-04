@@ -83,9 +83,9 @@ import {
   renderResult,
   downloadResult,
   processResult,
-  resetResult,
+  getUploadedPhoto,
   getPublicUrl,
-  getUploadedPhoto
+  resetResult
 } from './result.js';
 
 

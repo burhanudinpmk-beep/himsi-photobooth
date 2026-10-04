@@ -377,6 +377,20 @@ window.HimsiResult = {
     resetResult,
 };
 
+/* ============================================================
+   ES MODULE EXPORTS
+============================================================ */
+
+export {
+  renderResult,
+  downloadResult,
+  uploadResult,
+  processResult,
+  getCurrentResult,
+  getUploadedPhoto,
+  getPublicUrl,
+  resetResult
+};
 
 console.log(
   '[HIMSI] Result system loaded.'
