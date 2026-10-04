@@ -1,39 +1,11 @@
 /**
- * ============================================================
- * HIMSI META PHOTOBOOTH
  * app.js
- * ============================================================
- *
- * Main Application Controller
- *
- * Mengatur:
- * - Landing
- * - Frame selection
- * - Camera
- * - External webcam
- * - Mirror preview
- * - Mirror output
- * - Fullscreen camera
- * - Capture
- * - Preview
- * - Retake
- * - Processing
- * - Result
- * - Cloud upload
- * - QR preparation
+ * Entry point & orchestrator HIMSI Photobooth (Photo.exe).
+ * Menghubungkan state.js, frames.js, camera.js, countdown.js,
+ * compositor.js, processing.js, preview.js, result.js dengan DOM.
  */
 
-
-/* ============================================================
-   IMPORT
-============================================================ */
-
-import {
-  frameList,
-  getFrame
-} from './frames.js';
-
-
+import { frameList, getFrame } from './frames.js';
 import {
   getState,
   setScreen,
@@ -50,8 +22,6 @@ import {
   clearCapturedPhotos,
   setSelectedDeviceId,
 } from './state.js';
-
-
 import {
   startCamera,
   stopCamera,
@@ -62,3770 +32,580 @@ import {
   onDeviceListChange,
   watchStreamDisconnect,
 } from './camera.js';
+import { runCountdown } from './countdown.js';
+import { runProcessing } from './processing.js';
+import { renderPreviewGrid } from './preview.js';
+import { renderResult, downloadResult } from './result.js';
+import { qs, qsa, wait, pulseElement } from './utils.js';
 
+/* -------------------------------------------------------------------- */
+/*  SCREEN SWITCHING                                                      */
+/* -------------------------------------------------------------------- */
 
-import {
-  runCountdown
-} from './countdown.js';
+const screenEls = qsa('.screen');
 
-
-import {
-  runProcessing
-} from './processing.js';
-
-
-import {
-  renderPreviewGrid
-} from './preview.js';
-
-
-import {
-  renderResult,
-  downloadResult,
-  processResult,
-  getUploadedPhoto,
-  getPublicUrl,
-  resetResult
-} from './result.js';
-
-
-import {
-  qs,
-  qsa,
-  wait,
-  pulseElement
-} from './utils.js';
-
-
-/* ============================================================
-   CONSTANT
-============================================================ */
-
-const FLASH_MESSAGES = {
-
-  start:
-    'READY?',
-
-  keepGoing:
-    'NICE! KEEP GOING!',
-
-  almostDone:
-    'ONE MORE!',
-
-  done:
-    'AWESOME!'
-
-};
-
-
-/* ============================================================
-   SCREEN MANAGEMENT
-============================================================ */
-
-function showScreen(
-  screenName
-) {
-
-  /*
-   * Update application state.
-   */
-
-  setScreen(
-    screenName
-  );
-
-
-  /*
-   * Hide semua screen.
-   */
-
-  qsa(
-    '[data-screen]'
-  ).forEach(
-    screen => {
-
-      screen.classList.add(
-        'is-hidden'
-      );
-
-    }
-  );
-
-
-  /*
-   * Cari screen tujuan.
-   */
-
-  const targetScreen =
-    qs(
-      `[data-screen="${screenName}"]`
-    );
-
-
-  if (!targetScreen) {
-
-    console.error(
-      `[HIMSI] Screen tidak ditemukan: ${screenName}`
-    );
-
-    return;
-
-  }
-
-
-  /*
-   * Tampilkan screen.
-   */
-
-  targetScreen.classList.remove(
-    'is-hidden'
-  );
-
-
-  /*
-   * Scroll kembali ke atas.
-   */
-
-  window.scrollTo({
-    top: 0,
-    left: 0,
-    behavior: 'instant'
-  });
-
+function showScreen(name) {
+  setScreen(name);
 }
 
+onScreenChange((name) => {
+  screenEls.forEach((el) => {
+    el.classList.toggle('is-active', el.dataset.screen === name);
+  });
+});
 
-/* ============================================================
-   SCREEN CHANGE LISTENER
-============================================================ */
-
-onScreenChange(
-  screenName => {
-
-    document.body.dataset.screen =
-      screenName;
-
-  }
-);
-
-
-/* ============================================================
-   BOOT
-============================================================ */
+/* -------------------------------------------------------------------- */
+/*  BOOT SCREEN                                                           */
+/* -------------------------------------------------------------------- */
 
 async function runBoot() {
+  const bar = qs('#boot-progress-bar');
+  const percentEl = qs('#boot-percent');
+  const duration = 900;
+  const start = performance.now();
 
-  const bootScreen =
-    qs('#boot-screen');
-
-
-  if (!bootScreen) {
-
-    return;
-
-  }
-
-
-  bootScreen.classList.remove(
-    'is-hidden'
-  );
-
-
-  /*
-   * Beri waktu animasi boot.
-   */
-
-  await wait(
-    900
-  );
-
-
-  bootScreen.classList.add(
-    'is-hidden'
-  );
-
+  return new Promise((resolve) => {
+    function tick(now) {
+      const elapsed = now - start;
+      const pct = Math.min(100, Math.round((elapsed / duration) * 100));
+      bar.style.width = `${pct}%`;
+      percentEl.textContent = `${pct}%`;
+      if (pct < 100) {
+        requestAnimationFrame(tick);
+      } else {
+        resolve();
+      }
+    }
+    requestAnimationFrame(tick);
+  });
 }
 
-
-/* ============================================================
-   LANDING
-============================================================ */
+/* -------------------------------------------------------------------- */
+/*  LANDING SCREEN                                                        */
+/* -------------------------------------------------------------------- */
 
 function initLanding() {
-
-  const startButton =
-    qs('#btn-start');
-
-
-  if (!startButton) {
-
-    console.warn(
-      '[HIMSI] #btn-start tidak ditemukan.'
-    );
-
-    return;
-
-  }
-
-
-  startButton.addEventListener(
-    'click',
-    () => {
-
-      /*
-       * Pastikan sesi sebelumnya
-       * sudah bersih.
-       */
-
-      resetResult();
-
-      resetSession();
-
-
-      /*
-       * Masuk pemilihan frame.
-       */
-
-      showScreen(
-        'frames'
-      );
-
-    }
-  );
-
+  qs('#btn-yuk-foto').addEventListener('click', () => {
+    showScreen('frames');
+  });
 }
 
+/* -------------------------------------------------------------------- */
+/*  FRAMES SCREEN                                                         */
+/* -------------------------------------------------------------------- */
 
-/* ============================================================
-   FRAME SELECTION
-============================================================ */
+function renderFrameGrid() {
+  const grid = qs('#frame-grid');
+  grid.innerHTML = '';
 
-function renderFrames() {
+  frameList.forEach((frame) => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'frame-card';
+    card.dataset.frameId = frame.id;
 
-  const container =
-    qs('#frame-list');
+    card.innerHTML = `
+      <div class="frame-card__thumb-wrap">
+        <img src="${frame.thumbnail}" alt="${frame.name}" class="frame-card__thumb" />
+        <span class="frame-card__check">&#10003;</span>
+      </div>
+      <p class="frame-card__name">${frame.photoCount} FOTO</p>
+      <p class="frame-card__size">${frame.width} &times; ${frame.height} px</p>
+    `;
 
-
-  if (!container) {
-
-    console.error(
-      '[HIMSI] #frame-list tidak ditemukan.'
-    );
-
-    return;
-
-  }
-
-
-  container.innerHTML =
-    '';
-
-
-  frameList.forEach(
-    frame => {
-
-      const card =
-        document.createElement(
-          'button'
-        );
-
-
-      card.type =
-        'button';
-
-
-      card.className =
-        'frame-card';
-
-
-      card.dataset.frameId =
-        frame.id;
-
-
-      /*
-       * Preview frame.
-       */
-
-      const image =
-        document.createElement(
-          'img'
-        );
-
-
-      image.src =
-        frame.preview ||
-        frame.src ||
-        frame.image;
-
-
-      image.alt =
-        `Frame ${frame.name || frame.id}`;
-
-
-      image.loading =
-        'lazy';
-
-
-      /*
-       * Frame information.
-       */
-
-      const info =
-        document.createElement(
-          'div'
-        );
-
-
-      info.className =
-        'frame-card-info';
-
-
-      const title =
-        document.createElement(
-          'span'
-        );
-
-
-      title.className =
-        'frame-card-title';
-
-
-      title.textContent =
-        frame.name ||
-        frame.id.toUpperCase();
-
-
-      const count =
-        document.createElement(
-          'span'
-        );
-
-
-      count.className =
-        'frame-card-count';
-
-
-      count.textContent =
-        `${frame.photoCount} PHOTO`;
-
-
-      info.appendChild(
-        title
-      );
-
-
-      info.appendChild(
-        count
-      );
-
-
-      card.appendChild(
-        image
-      );
-
-
-      card.appendChild(
-        info
-      );
-
-
-      /*
-       * Frame click.
-       */
-
-      card.addEventListener(
-        'click',
-        () => {
-
-          handleFrameSelection(
-            frame.id
-          );
-
-        }
-      );
-
-
-      container.appendChild(
-        card
-      );
-
-    }
-  );
-
+    card.addEventListener('click', () => openFrameDialog(frame));
+    grid.appendChild(card);
+  });
 }
 
+let dialogFrame = null;
 
-/* ============================================================
-   HIGHLIGHT SELECTED FRAME
-============================================================ */
-
-function highlightSelectedFrame(
-  frameId
-) {
-
-  qsa(
-    '.frame-card'
-  ).forEach(
-    card => {
-
-      const selected =
-        card.dataset.frameId ===
-        frameId;
-
-
-      card.classList.toggle(
-        'is-selected',
-        selected
-      );
-
-    }
-  );
-
+function openFrameDialog(frame) {
+  dialogFrame = frame;
+  qs('#frame-dialog-img').src = frame.overlay;
+  qs('#frame-dialog-meta').textContent = `${frame.id.toUpperCase()}.PNG — ${frame.photoCount} PHOTOS — ${frame.width} × ${frame.height}`;
+  qs('#frame-dialog').classList.add('is-active');
 }
 
-
-/* ============================================================
-   HANDLE FRAME SELECTION
-============================================================ */
-
-function handleFrameSelection(
-  frameId
-) {
-
-  const frame =
-    getFrame(
-      frameId
-    );
-
-
-  if (!frame) {
-
-    console.error(
-      '[HIMSI] Frame tidak ditemukan:',
-      frameId
-    );
-
-    return;
-
-  }
-
-
-  /*
-   * Simpan frame.
-   */
-
-  setSelectedFrame(
-    frameId
-  );
-
-
-  /*
-   * Visual selection.
-   */
-
-  highlightSelectedFrame(
-    frameId
-  );
-
-
-  /*
-   * Aktifkan tombol continue.
-   */
-
-  const continueButton =
-    qs('#btn-frame-continue');
-
-
-  if (continueButton) {
-
-    continueButton.disabled =
-      false;
-
-  }
-
+function closeFrameDialog() {
+  qs('#frame-dialog').classList.remove('is-active');
+  dialogFrame = null;
 }
-
-
-/* ============================================================
-   INIT FRAMES
-============================================================ */
 
 function initFrames() {
+  renderFrameGrid();
 
-  renderFrames();
-
-
-  const continueButton =
-    qs('#btn-frame-continue');
-
-
-  if (continueButton) {
-
-    continueButton.disabled =
-      true;
-
-
-    continueButton.addEventListener(
-      'click',
-      () => {
-
-        const state =
-          getState();
-
-
-        if (
-          !state.selectedFrameId
-        ) {
-
-          console.warn(
-            '[HIMSI] Pilih frame terlebih dahulu.'
-          );
-
-          return;
-
-        }
-
-
-        /*
-         * Bersihkan foto dari sesi sebelumnya.
-         */
-
-        clearCapturedPhotos();
-
-
-        /*
-         * Masuk kamera.
-         */
-
-        enterCameraScreen({
-          isRetake: false
-        });
-
-      }
-    );
-
-  }
-
-
-  /*
-   * Back to landing.
-   */
-
-  const backButton =
-    qs('#btn-frames-back');
-
-
-  if (backButton) {
-
-    backButton.addEventListener(
-      'click',
-      () => {
-
-        resetSession();
-
-        resetResult();
-
-        highlightSelectedFrame(
-          null
-        );
-
-        showScreen(
-          'landing'
-        );
-
-      }
-    );
-
-  }
-
-}
-
-
-/* ============================================================
-   FLASH MESSAGE
-============================================================ */
-
-function nextFlashMessage(
-  photoCount,
-  total
-) {
-
-  if (
-    photoCount >= total
-  ) {
-
-    return FLASH_MESSAGES.done;
-
-  }
-
-
-  if (
-    photoCount ===
-    total - 1
-  ) {
-
-    return FLASH_MESSAGES.almostDone;
-
-  }
-
-
-  if (
-    photoCount === 0
-  ) {
-
-    return FLASH_MESSAGES.start;
-
-  }
-
-
-  return FLASH_MESSAGES.keepGoing;
-
-}
-
-
-/* ============================================================
-   CAMERA THUMBNAILS
-============================================================ */
-
-function renderCameraThumbs(
-  frame
-) {
-
-  const wrap =
-    qs('#camera-thumbs');
-
-
-  if (!wrap) {
-
-    return;
-
-  }
-
-
-  wrap.innerHTML =
-    '';
-
-
-  const state =
-    getState();
-
-
-  for (
-    let i = 0;
-    i < frame.photoCount;
-    i++
-  ) {
-
-    const thumb =
-      document.createElement(
-        'div'
-      );
-
-
-    const taken =
-      i <
-      state.photos.length;
-
-
-    thumb.className =
-      `camera-thumb ${
-        taken
-          ? 'is-taken'
-          : ''
-      }`;
-
-
-    thumb.textContent =
-      String(i + 1)
-        .padStart(
-          2,
-          '0'
-        );
-
-
-    wrap.appendChild(
-      thumb
-    );
-
-  }
-
-}
-
-/* ============================================================
-   CAMERA STATUS
-============================================================ */
-
-function setCameraStatus(
-  status
-) {
-
-  const indicator =
-    qs('#live-indicator');
-
-  const text =
-    qs('#live-indicator-text');
-
-
-  if (!indicator || !text) {
-
-    return;
-
-  }
-
-
-  indicator.classList.remove(
-    'live-indicator--live',
-    'live-indicator--connecting',
-    'live-indicator--error',
-    'live-indicator--off'
-  );
-
-
-  indicator.classList.add(
-    `live-indicator--${status}`
-  );
-
-
-  const labels = {
-
-    live:
-      'LIVE',
-
-    connecting:
-      'CONNECTING...',
-
-    error:
-      'CAMERA ERROR',
-
-    off:
-      'CAMERA OFF'
-
-  };
-
-
-  text.textContent =
-    labels[status] ||
-    labels.off;
-
-
-  /*
-   * Fullscreen hanya aktif
-   * ketika kamera LIVE.
-   */
-
-  const fullButton =
-    qs('#btn-full-camera');
-
-
-  if (
-    fullButton &&
-    !fullButton.classList.contains(
-      'is-hidden'
-    )
-  ) {
-
-    fullButton.disabled =
-      status !== 'live';
-
-  }
-
-}
-
-
-/* ============================================================
-   PHOTO COUNTER
-============================================================ */
-
-function updatePhotoCounter(
-  current,
-  total
-) {
-
-  const currentText =
-    String(current)
-      .padStart(
-        2,
-        '0'
-      );
-
-
-  const totalText =
-    String(total)
-      .padStart(
-        2,
-        '0'
-      );
-
-
-  /*
-   * Normal camera UI
-   */
-
-  const currentEl =
-    qs('#camera-photo-current');
-
-
-  const totalEl =
-    qs('#camera-photo-total');
-
-
-  if (currentEl) {
-
-    currentEl.textContent =
-      currentText;
-
-  }
-
-
-  if (totalEl) {
-
-    totalEl.textContent =
-      totalText;
-
-  }
-
-
-  /*
-   * Fullscreen camera UI
-   */
-
-  const currentFs =
-    qs('#camera-photo-current-fs');
-
-
-  const totalFs =
-    qs('#camera-photo-total-fs');
-
-
-  if (currentFs) {
-
-    currentFs.textContent =
-      currentText;
-
-  }
-
-
-  if (totalFs) {
-
-    totalFs.textContent =
-      totalText;
-
-  }
-
-}
-
-
-/* ============================================================
-   FULLSCREEN SUPPORT
-============================================================ */
-
-function isFullscreenSupported() {
-
-  return Boolean(
-    document.fullscreenEnabled ||
-    document.webkitFullscreenEnabled
-  );
-
-}
-
-
-/* ============================================================
-   OPEN CAMERA FULLSCREEN
-============================================================ */
-
-async function openCameraFullscreen() {
-
-  const container =
-    qs('#camera-live');
-
-
-  if (!container) {
-
-    console.warn(
-      '[camera] Camera live container tidak ditemukan.'
-    );
-
-    return;
-
-  }
-
-
-  try {
-
-    /*
-     * Jangan request fullscreen
-     * kalau sudah fullscreen.
-     */
-
-    if (
-      document.fullscreenElement ||
-      document.webkitFullscreenElement
-    ) {
-
-      return;
-
-    }
-
-
-    if (
-      container.requestFullscreen
-    ) {
-
-      await container
-        .requestFullscreen();
-
-    } else if (
-      container.webkitRequestFullscreen
-    ) {
-
-      await container
-        .webkitRequestFullscreen();
-
-    } else {
-
-      console.warn(
-        '[camera] Fullscreen API tidak didukung.'
-      );
-
-    }
-
-  } catch (error) {
-
-    console.error(
-      '[camera] Fullscreen gagal:',
-      error
-    );
-
-  }
-
-}
-
-
-/* ============================================================
-   EXIT CAMERA FULLSCREEN
-============================================================ */
-
-async function exitCameraFullscreen() {
-
-  try {
-
-    if (
-      document.fullscreenElement
-    ) {
-
-      await document
-        .exitFullscreen();
-
-    } else if (
-      document.webkitFullscreenElement
-    ) {
-
-      await document
-        .webkitExitFullscreen();
-
-    }
-
-  } catch (error) {
-
-    console.error(
-      '[camera] Gagal keluar fullscreen:',
-      error
-    );
-
-  }
-
-}
-
-
-/* ============================================================
-   FULLSCREEN CHANGE
-============================================================ */
-
-function handleFullscreenChange() {
-
-  const isFullscreen =
-    Boolean(
-      document.fullscreenElement ||
-      document.webkitFullscreenElement
-    );
-
-
-  const cameraLive =
-    qs('#camera-live');
-
-
-  if (cameraLive) {
-
-    cameraLive.classList.toggle(
-      'is-fullscreen-camera',
-      isFullscreen
-    );
-
-  }
-
-
-  const exitButton =
-    qs('#btn-exit-fullscreen');
-
-
-  if (exitButton) {
-
-    exitButton.classList.toggle(
-      'is-hidden',
-      !isFullscreen
-    );
-
-  }
-
-}
-
-
-/* ============================================================
-   CAMERA SOURCE STATE
-============================================================ */
-
-let unsubscribeDeviceList =
-  null;
-
-
-let unsubscribeStreamEnded =
-  null;
-
-
-/* ============================================================
-   POPULATE CAMERA SOURCE SELECT
-============================================================ */
-
-async function populateCameraSourceSelect() {
-
-  const wrap =
-    qs('#camera-source-wrap');
-
-
-  const select =
-    qs('#camera-source-select');
-
-
-  if (
-    !wrap ||
-    !select
-  ) {
-
-    return;
-
-  }
-
-
-  let devices =
-    [];
-
-
-  try {
-
-    devices =
-      await listVideoInputDevices();
-
-  } catch (error) {
-
-    console.error(
-      '[camera] Gagal membaca daftar webcam:',
-      error
-    );
-
-  }
-
-
-  /*
-   * Tidak ada webcam.
-   */
-
-  if (
-    devices.length === 0
-  ) {
-
-    wrap.classList.add(
-      'is-hidden'
-    );
-
-    return;
-
-  }
-
-
-  wrap.classList.remove(
-    'is-hidden'
-  );
-
-
-  const state =
-    getState();
-
-
-  const currentId =
-    state.selectedDeviceId;
-
-
-  /*
-   * Pastikan device yang tersimpan
-   * masih tersedia.
-   */
-
-  const deviceStillExists =
-    currentId &&
-    devices.some(
-      device =>
-        device.deviceId ===
-        currentId
-    );
-
-
-  /*
-   * Kalau belum ada device pilihan,
-   * gunakan webcam pertama.
-   */
-
-  const activeId =
-    deviceStillExists
-      ? currentId
-      : devices[0].deviceId;
-
-
-  if (
-    !deviceStillExists
-  ) {
-
-    setSelectedDeviceId(
-      activeId
-    );
-
-  }
-
-
-  /*
-   * Render select webcam.
-   */
-
-  select.innerHTML =
-    '';
-
-
-  devices.forEach(
-    (
-      device,
-      index
-    ) => {
-
-      const option =
-        document.createElement(
-          'option'
-        );
-
-
-      option.value =
-        device.deviceId;
-
-
-      option.textContent =
-        device.label ||
-        `Camera ${index + 1}`;
-
-
-      if (
-        device.deviceId ===
-        activeId
-      ) {
-
-        option.selected =
-          true;
-
-      }
-
-
-      select.appendChild(
-        option
-      );
-
-    }
-  );
-
-
-  /*
-   * Kalau cuma ada satu kamera,
-   * dropdown tidak perlu aktif.
-   */
-
-  select.disabled =
-    devices.length <= 1;
-
-}
-
-
-/* ============================================================
-   CAMERA LISTENER CLEANUP
-============================================================ */
-
-function teardownCameraListeners() {
-
-  if (
-    unsubscribeDeviceList
-  ) {
-
-    unsubscribeDeviceList();
-
-    unsubscribeDeviceList =
-      null;
-
-  }
-
-
-  if (
-    unsubscribeStreamEnded
-  ) {
-
-    unsubscribeStreamEnded();
-
-    unsubscribeStreamEnded =
-      null;
-
-  }
-
-}
-
-
-/* ============================================================
-   STOP CAMERA + LISTENER
-============================================================ */
-
-function stopCameraAndListeners(
-  video
-) {
-
-  teardownCameraListeners();
-
-
-  if (video) {
-
-    stopCamera(
-      video
-    );
-
-  }
-
-
-  exitCameraFullscreen();
-
-}
-
-
-/* ============================================================
-   STREAM DISCONNECTED
-============================================================ */
-
-function handleStreamDisconnected() {
-
-  console.warn(
-    '[camera] Webcam terputus.'
-  );
-
-
-  setCaptureEnabled(
-    false
-  );
-
-
-  setCameraStatus(
-    'off'
-  );
-
-
-  const disconnected =
-    qs('#camera-disconnected');
-
-
-  if (disconnected) {
-
-    disconnected.classList.remove(
-      'is-hidden'
-    );
-
-  }
-
-
-  if (
-    unsubscribeStreamEnded
-  ) {
-
-    unsubscribeStreamEnded();
-
-    unsubscribeStreamEnded =
-      null;
-
-  }
-
-}
-
-
-/* ============================================================
-   ENTER CAMERA SCREEN
-============================================================ */
-
-async function enterCameraScreen({
-  isRetake = false
-} = {}) {
-
-  showScreen(
-    'camera'
-  );
-
-
-  const state =
-    getState();
-
-
-  const frame =
-    getFrame(
-      state.selectedFrameId
-    );
-
-
-  if (!frame) {
-
-    console.error(
-      '[camera] Frame belum dipilih.'
-    );
-
-    showScreen(
-      'frames'
-    );
-
-    return;
-
-  }
-
-
-  /*
-   * Nama frame.
-   */
-
-  const frameName =
-    qs('#camera-frame-name');
-
-
-  if (frameName) {
-
-    frameName.textContent =
-      `${frame.id.toUpperCase()}.PNG`;
-
-  }
-
-
-  /*
-   * Total photo.
-   */
-
-  const total =
-    String(
-      frame.photoCount
-    ).padStart(
-      2,
-      '0'
-    );
-
-
-  const totalNormal =
-    qs('#camera-photo-total');
-
-
-  const totalFullscreen =
-    qs('#camera-photo-total-fs');
-
-
-  if (totalNormal) {
-
-    totalNormal.textContent =
-      total;
-
-  }
-
-
-  if (totalFullscreen) {
-
-    totalFullscreen.textContent =
-      total;
-
-  }
-
-
-  const gate =
-    qs('#camera-permission');
-
-
-  const errorEl =
-    qs('#camera-error');
-
-
-  const liveEl =
-    qs('#camera-live');
-
-
-  /*
-   * Reset camera error UI.
-   */
-
-  if (errorEl) {
-
-    errorEl.classList.add(
-      'is-hidden'
-    );
-
-  }
-
-
-  const disconnected =
-    qs('#camera-disconnected');
-
-
-  if (disconnected) {
-
-    disconnected.classList.add(
-      'is-hidden'
-    );
-
-  }
-
-
-  setCameraStatus(
-    'off'
-  );
-
-
-  /*
-   * RETAKE:
-   * tidak perlu menampilkan permission gate
-   * lagi.
-   */
-
-  if (isRetake) {
-
-    if (gate) {
-
-      gate.classList.add(
-        'is-hidden'
-      );
-
-    }
-
-
-    await activateCamera(
-      frame
-    );
-
-
-    return;
-
-  }
-
-
-  /*
-   * NORMAL SESSION:
-   * tampilkan permission gate.
-   */
-
-  if (gate) {
-
-    gate.classList.remove(
-      'is-hidden'
-    );
-
-  }
-
-
-  if (liveEl) {
-
-    liveEl.classList.add(
-      'is-hidden'
-    );
-
-  }
-
-}
-
-
-/* ============================================================
-   MIRROR PREVIEW
-============================================================ */
-
-function applyMirrorPreviewClass() {
-
-  const video =
-    qs('#camera-video');
-
-
-  if (!video) {
-
-    return;
-
-  }
-
-
-  /*
-   * Mirror Preview hanya mengubah
-   * tampilan video secara visual.
-   *
-   * Tidak mengubah file hasil foto.
-   */
-
-  video.classList.toggle(
-    'is-mirrored',
-    Boolean(
-      getState()
-        .mirrorPreview
-    )
-  );
-
-}
-
-
-/* ============================================================
-   SYNC MIRROR TOGGLES
-============================================================ */
-
-function syncMirrorToggles() {
-
-  const state =
-    getState();
-
-
-  const previewToggle =
-    qs('#toggle-mirror-preview');
-
-
-  const outputToggle =
-    qs('#toggle-mirror-output');
-
-
-  if (previewToggle) {
-
-    previewToggle.checked =
-      Boolean(
-        state.mirrorPreview
-      );
-
-  }
-
-
-  if (outputToggle) {
-
-    outputToggle.checked =
-      Boolean(
-        state.mirrorOutput
-      );
-
-  }
-
-
-  applyMirrorPreviewClass();
-
-}
-
-
-/* ============================================================
-   ACTIVATE CAMERA
-============================================================ */
-
-async function activateCamera(
-  frame
-) {
-
-  const gate =
-    qs('#camera-permission');
-
-
-  const errorEl =
-    qs('#camera-error');
-
-
-  const liveEl =
-    qs('#camera-live');
-
-
-  const video =
-    qs('#camera-video');
-
-
-  if (!video) {
-
-    console.error(
-      '[camera] #camera-video tidak ditemukan.'
-    );
-
-    return;
-
-  }
-
-
-  /*
-   * Bersihkan listener lama.
-   */
-
-  teardownCameraListeners();
-
-
-  const disconnected =
-    qs('#camera-disconnected');
-
-
-  if (disconnected) {
-
-    disconnected.classList.add(
-      'is-hidden'
-    );
-
-  }
-
-
-  setCameraStatus(
-    'connecting'
-  );
-
-
-  try {
-
-    /*
-     * startCamera akan menggunakan
-     * selectedDeviceId jika tersedia.
-     */
-
-    await startCamera(
-      video,
-      getState()
-        .selectedDeviceId
-    );
-
-
-    /*
-     * Camera berhasil aktif.
-     */
-
-    if (gate) {
-
-      gate.classList.add(
-        'is-hidden'
-      );
-
-    }
-
-
-    if (errorEl) {
-
-      errorEl.classList.add(
-        'is-hidden'
-      );
-
-    }
-
-
-    if (liveEl) {
-
-      liveEl.classList.remove(
-        'is-hidden'
-      );
-
-    }
-
-
-    setCameraStatus(
-      'live'
-    );
-
-
-    /*
-     * Terapkan mirror preview.
-     */
-
-    syncMirrorToggles();
-
-
-    /*
-     * Setelah permission diberikan,
-     * label webcam biasanya baru tersedia.
-     */
-
-    await populateCameraSourceSelect();
-
-
-    /*
-     * Pantau webcam eksternal jika
-     * tiba-tiba dicabut.
-     */
-
-    unsubscribeStreamEnded =
-      watchStreamDisconnect(
-        getState().mediaStream,
-        handleStreamDisconnected
-      );
-
-
-    /*
-     * Pantau perubahan daftar webcam.
-     */
-
-    if (
-      !unsubscribeDeviceList
-    ) {
-
-      unsubscribeDeviceList =
-        onDeviceListChange(
-          () => {
-
-            populateCameraSourceSelect();
-
-          }
-        );
-
-    }
-
-
-    /*
-     * Update counter.
-     */
-
-    const state =
-      getState();
-
-
-    updatePhotoCounter(
-      Math.min(
-        state.photos.length + 1,
-        frame.photoCount
-      ),
-      frame.photoCount
-    );
-
-
-    /*
-     * Flash message.
-     */
-
-    const flashMessage =
-      qs('#camera-flash-message');
-
-
-    if (flashMessage) {
-
-      flashMessage.textContent =
-        nextFlashMessage(
-          state.photos.length,
-          frame.photoCount
-        );
-
-    }
-
-
-    /*
-     * Thumbnail.
-     */
-
-    renderCameraThumbs(
-      frame
-    );
-
-
-    /*
-     * Capture aktif.
-     */
-
-    setCaptureEnabled(
-      true
-    );
-
-  } catch (error) {
-
-    console.error(
-      '[camera] getUserMedia gagal:',
-      error
-    );
-
-
-    const {
-      title,
-      message
-    } =
-      getCameraErrorMessage(
-        error
-      );
-
-
-    if (gate) {
-
-      gate.classList.add(
-        'is-hidden'
-      );
-
-    }
-
-
-    if (liveEl) {
-
-      liveEl.classList.add(
-        'is-hidden'
-      );
-
-    }
-
-
-    setCameraStatus(
-      'error'
-    );
-
-
-    const errorTitle =
-      qs('#camera-error-title');
-
-
-    const errorMessage =
-      qs('#camera-error-message');
-
-
-    if (errorTitle) {
-
-      errorTitle.textContent =
-        title;
-
-    }
-
-
-    if (errorMessage) {
-
-      errorMessage.textContent =
-        message;
-
-    }
-
-
-    if (errorEl) {
-
-      errorEl.classList.remove(
-        'is-hidden'
-      );
-
-    }
-
-  }
-
-}
-
-
-/* ============================================================
-   SWITCH EXTERNAL CAMERA
-============================================================ */
-
-async function handleCameraSourceChange(
-  event
-) {
-
-  const newDeviceId =
-    event.target.value;
-
-
-  if (!newDeviceId) {
-
-    return;
-
-  }
-
-
-  const video =
-    qs('#camera-video');
-
-
-  if (!video) {
-
-    return;
-
-  }
-
-
-  /*
-   * Simpan device baru.
-   */
-
-  setSelectedDeviceId(
-    newDeviceId
-  );
-
-
-  setCameraStatus(
-    'connecting'
-  );
-
-
-  /*
-   * Stop listener stream lama.
-   */
-
-  if (
-    unsubscribeStreamEnded
-  ) {
-
-    unsubscribeStreamEnded();
-
-    unsubscribeStreamEnded =
-      null;
-
-  }
-
-
-  try {
-
-    /*
-     * Pindah webcam.
-     */
-
-    await switchCamera(
-      video,
-      newDeviceId
-    );
-
-
-    setCameraStatus(
-      'live'
-    );
-
-
-    /*
-     * Mirror harus tetap diterapkan
-     * setelah pergantian webcam.
-     */
-
-    applyMirrorPreviewClass();
-
-
-    /*
-     * Pantau stream webcam baru.
-     */
-
-    unsubscribeStreamEnded =
-      watchStreamDisconnect(
-        getState().mediaStream,
-        handleStreamDisconnected
-      );
-
-
-    console.log(
-      '[camera] Webcam berhasil diganti:',
-      newDeviceId
-    );
-
-  } catch (error) {
-
-    console.error(
-      '[camera] switchCamera gagal:',
-      error
-    );
-
-
-    const {
-      title,
-      message
-    } =
-      getCameraErrorMessage(
-        error
-      );
-
-
-    setCameraStatus(
-      'error'
-    );
-
-
-    const live =
-      qs('#camera-live');
-
-
-    if (live) {
-
-      live.classList.add(
-        'is-hidden'
-      );
-
-    }
-
-
-    const errorTitle =
-      qs('#camera-error-title');
-
-
-    const errorMessage =
-      qs('#camera-error-message');
-
-
-    const errorBox =
-      qs('#camera-error');
-
-
-    if (errorTitle) {
-
-      errorTitle.textContent =
-        title;
-
-    }
-
-
-    if (errorMessage) {
-
-      errorMessage.textContent =
-        message;
-
-    }
-
-
-    if (errorBox) {
-
-      errorBox.classList.remove(
-        'is-hidden'
-      );
-
-    }
-
-  }
-
-}
-
-
-/* ============================================================
-   REFRESH CAMERA
-============================================================ */
-
-function handleRefreshCamera() {
-
-  const disconnected =
-    qs('#camera-disconnected');
-
-
-  if (disconnected) {
-
-    disconnected.classList.add(
-      'is-hidden'
-    );
-
-  }
-
-
-  const frame =
-    getFrame(
-      getState()
-        .selectedFrameId
-    );
-
-
-  if (!frame) {
-
-    console.error(
-      '[camera] Frame tidak tersedia.'
-    );
-
-    return;
-
-  }
-
-
-  activateCamera(
-    frame
-  );
-
-}
-
-
-/* ============================================================
-   FULLSCREEN EVENT LISTENERS
-============================================================ */
-
-document.addEventListener(
-  'fullscreenchange',
-  handleFullscreenChange
-);
-
-
-document.addEventListener(
-  'webkitfullscreenchange',
-  handleFullscreenChange
-);
-
-/* ============================================================
-   CAPTURE BUTTON STATE
-============================================================ */
-
-function setCaptureEnabled(
-  enabled
-) {
-
-  const button =
-    qs('#btn-capture');
-
-
-  if (!button) {
-    return;
-  }
-
-
-  button.disabled =
-    !enabled;
-
-}
-
-
-/* ============================================================
-   HANDLE CAPTURE
-============================================================ */
-
-async function handleCapture() {
-
-  const state =
-    getState();
-
-
-  const frame =
-    getFrame(
-      state.selectedFrameId
-    );
-
-
-  const video =
-    qs('#camera-video');
-
-
-  if (!frame) {
-
-    console.error(
-      '[camera] Frame tidak tersedia.'
-    );
-
-    return;
-
-  }
-
-
-  if (!video) {
-
-    console.error(
-      '[camera] Video element tidak ditemukan.'
-    );
-
-    return;
-
-  }
-
-
-  /*
-   * Cegah double click capture.
-   */
-
-  setCaptureEnabled(
-    false
-  );
-
-
-  try {
-
-    /* ========================================================
-       COUNTDOWN
-    ======================================================== */
-
-    await runCountdown({
-
-      overlay:
-        qs('#countdown-overlay'),
-
-      label:
-        qs('#countdown-label'),
-
-      flash:
-        qs('#countdown-flash')
-
-    });
-
-
-    /* ========================================================
-       CAPTURE VIDEO → BLOB
-    ======================================================== */
-
-    /*
-     * PENTING:
-     *
-     * mirrorPreview
-     * hanya mengatur tampilan live camera.
-     *
-     * mirrorOutput
-     * mengatur orientasi FILE FOTO.
-     *
-     * Kalau ingin hasil foto tidak terbalik,
-     * mirrorOutput sebaiknya FALSE.
-     */
-
-    const photoBlob =
-      await captureFrameToBlob(
-        video,
-        getState().mirrorOutput
-      );
-
-
-    if (
-      !(photoBlob instanceof Blob)
-    ) {
-
-      throw new Error(
-        'Camera tidak menghasilkan Blob foto.'
-      );
-
-    }
-
-
-    const currentState =
-      getState();
-
-
-    /* ========================================================
-       RETAKE MODE
-    ======================================================== */
-
-    if (
-      currentState.retakeIndex !==
-      null
-    ) {
-
-      /*
-       * Ganti foto lama dengan foto baru.
-       */
-
-      replacePhotoAt(
-        currentState.retakeIndex,
-        photoBlob
-      );
-
-
-      /*
-       * Keluar dari mode retake.
-       */
-
-      clearRetakeIndex();
-
-
-      /*
-       * Matikan camera.
-       */
-
-      stopCameraAndListeners(
-        video
-      );
-
-
-      /*
-       * Kembali ke Preview.
-       */
-
-      goToPreview();
-
-
-      return;
-
-    }
-
-
-    /* ========================================================
-       NORMAL CAPTURE
-    ======================================================== */
-
-    addPhoto(
-      photoBlob
-    );
-
-
-    const updatedState =
-      getState();
-
-
-    /*
-     * Update thumbnail.
-     */
-
-    renderCameraThumbs(
-      frame
-    );
-
-
-    /* ========================================================
-       ALL PHOTOS COMPLETE
-    ======================================================== */
-
-    if (
-      updatedState.photos.length >=
-      frame.photoCount
-    ) {
-
-      const message =
-        qs('#camera-flash-message');
-
-
-      if (message) {
-
-        message.textContent =
-          FLASH_MESSAGES.done;
-
-
-        pulseElement(
-          message
-        );
-
-      }
-
-
-      /*
-       * Sedikit delay agar user
-       * melihat pesan selesai.
-       */
-
-      await wait(
-        500
-      );
-
-
-      /*
-       * Stop webcam.
-       */
-
-      stopCameraAndListeners(
-        video
-      );
-
-
-      /*
-       * Preview.
-       */
-
-      goToPreview();
-
-
-      return;
-
-    }
-
-
-    /* ========================================================
-       NEXT PHOTO
-    ======================================================== */
-
-    updatePhotoCounter(
-      updatedState.photos.length + 1,
-      frame.photoCount
-    );
-
-
-    const flashMessage =
-      qs('#camera-flash-message');
-
-
-    if (flashMessage) {
-
-      flashMessage.textContent =
-        nextFlashMessage(
-          updatedState.photos.length,
-          frame.photoCount
-        );
-
-
-      pulseElement(
-        flashMessage
-      );
-
-    }
-
-
-    /*
-     * Capture siap lagi.
-     */
-
-    setCaptureEnabled(
-      true
-    );
-
-
-  } catch (error) {
-
-    console.error(
-      '[camera] Capture gagal:',
-      error
-    );
-
-
-    /*
-     * Kalau terjadi error,
-     * aktifkan kembali tombol.
-     */
-
-    setCaptureEnabled(
-      true
-    );
-
-  }
-
-}
-
-
-/* ============================================================
-   INIT CAMERA
-============================================================ */
-
-function initCamera() {
-
-  /* ==========================================================
-     FULLSCREEN SUPPORT
-  ========================================================== */
-
-  const fullscreenButton =
-    qs('#btn-full-camera');
-
-
-  if (
-    fullscreenButton &&
-    isFullscreenSupported()
-  ) {
-
-    fullscreenButton.classList.remove(
-      'is-hidden'
-    );
-
-
-    fullscreenButton.addEventListener(
-      'click',
-      openCameraFullscreen
-    );
-
-  }
-
-
-  /* ==========================================================
-     EXIT FULLSCREEN
-  ========================================================== */
-
-  const exitFullscreenButton =
-    qs('#btn-exit-fullscreen');
-
-
-  if (exitFullscreenButton) {
-
-    exitFullscreenButton.addEventListener(
-      'click',
-      exitCameraFullscreen
-    );
-
-  }
-
-
-  /* ==========================================================
-     BACK TO FRAME
-  ========================================================== */
-
-  const backToFrames =
-    qs('#btn-back-to-frames');
-
-
-  if (backToFrames) {
-
-    backToFrames.addEventListener(
-      'click',
-      () => {
-
-        const video =
-          qs('#camera-video');
-
-
-        /*
-         * Matikan webcam jika aktif.
-         */
-
-        if (video) {
-
-          stopCameraAndListeners(
-            video
-          );
-
-        } else {
-
-          teardownCameraListeners();
-
-        }
-
-
-        /*
-         * Hapus foto sesi saat ini.
-         */
-
-        clearCapturedPhotos();
-
-
-        /*
-         * Pastikan mode retake bersih.
-         */
-
-        clearRetakeIndex();
-
-
-        /*
-         * Keluar fullscreen.
-         */
-
-        exitCameraFullscreen();
-
-
-        /*
-         * Kembali ke frame selection.
-         */
-
-        showScreen(
-          'frames'
-        );
-
-      }
-    );
-
-  }
-
-
-  /* ==========================================================
-     MIRROR PREVIEW
-  ========================================================== */
-
-  const mirrorPreviewToggle =
-    qs('#toggle-mirror-preview');
-
-
-  if (mirrorPreviewToggle) {
-
-    mirrorPreviewToggle.addEventListener(
-      'change',
-      event => {
-
-        /*
-         * Hanya tampilan camera.
-         */
-
-        setMirrorPreview(
-          event.target.checked
-        );
-
-
-        applyMirrorPreviewClass();
-
-      }
-    );
-
-  }
-
-
-  /* ==========================================================
-     MIRROR OUTPUT
-  ========================================================== */
-
-  const mirrorOutputToggle =
-    qs('#toggle-mirror-output');
-
-
-  if (mirrorOutputToggle) {
-
-    mirrorOutputToggle.addEventListener(
-      'change',
-      event => {
-
-        /*
-         * Menentukan apakah hasil file
-         * foto ikut mirror.
-         */
-
-        setMirrorOutput(
-          event.target.checked
-        );
-
-      }
-    );
-
-  }
-
-
-  /* ==========================================================
-     EXTERNAL WEBCAM SELECT
-  ========================================================== */
-
-  const cameraSource =
-    qs('#camera-source-select');
-
-
-  if (cameraSource) {
-
-    cameraSource.addEventListener(
-      'change',
-      handleCameraSourceChange
-    );
-
-  }
-
-
-  /* ==========================================================
-     REFRESH CAMERA
-  ========================================================== */
-
-  const refreshButton =
-    qs('#btn-refresh-camera');
-
-
-  if (refreshButton) {
-
-    refreshButton.addEventListener(
-      'click',
-      handleRefreshCamera
-    );
-
-  }
-
-
-  /* ==========================================================
-     ENABLE CAMERA
-  ========================================================== */
-
-  const enableCameraButton =
-    qs('#btn-enable-camera');
-
-
-  if (enableCameraButton) {
-
-    enableCameraButton.addEventListener(
-      'click',
-      () => {
-
-        const frame =
-          getFrame(
-            getState()
-              .selectedFrameId
-          );
-
-
-        if (!frame) {
-
-          console.error(
-            '[camera] Frame belum dipilih.'
-          );
-
-          return;
-
-        }
-
-
-        activateCamera(
-          frame
-        );
-
-      }
-    );
-
-  }
-
-
-  /* ==========================================================
-     RETRY CAMERA
-  ========================================================== */
-
-  const retryCameraButton =
-    qs('#btn-retry-camera');
-
-
-  if (retryCameraButton) {
-
-    retryCameraButton.addEventListener(
-      'click',
-      () => {
-
-        const frame =
-          getFrame(
-            getState()
-              .selectedFrameId
-          );
-
-
-        if (!frame) {
-
-          return;
-
-        }
-
-
-        activateCamera(
-          frame
-        );
-
-      }
-    );
-
-  }
-
-
-  /* ==========================================================
-     CAPTURE
-  ========================================================== */
-
-  const captureButton =
-    qs('#btn-capture');
-
-
-  if (captureButton) {
-
-    captureButton.addEventListener(
-      'click',
-      handleCapture
-    );
-
-  }
-
-}
-
-
-/* ============================================================
-   GO TO PREVIEW
-============================================================ */
-
-function goToPreview() {
-
-  /*
-   * Tampilkan Preview Screen.
-   */
-
-  showScreen(
-    'preview'
-  );
-
-
-  const state =
-    getState();
-
-
-  /*
-   * Pastikan ada foto.
-   */
-
-  if (
-    !state.photos ||
-    state.photos.length === 0
-  ) {
-
-    console.warn(
-      '[preview] Tidak ada foto untuk ditampilkan.'
-    );
-
-    return;
-
-  }
-
-
-  const previewGrid =
-    qs('#preview-grid');
-
-
-  if (!previewGrid) {
-
-    console.error(
-      '[preview] #preview-grid tidak ditemukan.'
-    );
-
-    return;
-
-  }
-
-
-  /*
-   * Render seluruh hasil capture.
-   */
-
-  renderPreviewGrid(
-    previewGrid,
-    state.photos,
-    handleRetakeRequest
-  );
-
-}
-
-
-/* ============================================================
-   RETAKE PHOTO
-============================================================ */
-
-function handleRetakeRequest(
-  index
-) {
-
-  const state =
-    getState();
-
-
-  /*
-   * Validasi index.
-   */
-
-  if (
-    index < 0 ||
-    index >= state.photos.length
-  ) {
-
-    console.error(
-      '[preview] Retake index tidak valid:',
-      index
-    );
-
-    return;
-
-  }
-
-
-  /*
-   * Simpan index foto yang
-   * ingin diulang.
-   */
-
-  setRetakeIndex(
-    index
-  );
-
-
-  /*
-   * Masuk camera dalam Retake Mode.
-   */
-
-  enterCameraScreen({
-    isRetake: true
+  qs('#btn-back-to-landing').addEventListener('click', () => {
+    showScreen('landing');
   });
 
+  qs('#frame-dialog-close').addEventListener('click', closeFrameDialog);
+  qs('#frame-dialog-back').addEventListener('click', closeFrameDialog);
+  qs('#frame-dialog').addEventListener('click', (e) => {
+    if (e.target.id === 'frame-dialog') closeFrameDialog();
+  });
+
+  qs('#frame-dialog-use').addEventListener('click', () => {
+    if (!dialogFrame) return;
+    const chosenFrameId = dialogFrame.id;
+    setSelectedFrame(chosenFrameId);
+    closeFrameDialog();
+    highlightSelectedFrame(chosenFrameId);
+    enterCameraScreen({ isRetake: false });
+  });
 }
 
-
-/* ============================================================
-   INIT PREVIEW
-============================================================ */
-
-function initPreview() {
-
-  /* ==========================================================
-     BACK TO CAMERA
-  ========================================================== */
-
-  const backButton =
-    qs('#btn-back-to-camera');
-
-
-  if (backButton) {
-
-    backButton.addEventListener(
-      'click',
-      () => {
-
-        /*
-         * Tombol ini berarti user
-         * ingin mengulang sesi foto.
-         */
-
-        clearCapturedPhotos();
-
-
-        clearRetakeIndex();
-
-
-        enterCameraScreen({
-          isRetake: true
-        });
-
-      }
-    );
-
-  }
-
-
-  /* ==========================================================
-     CONTINUE → PROCESSING
-  ========================================================== */
-
-  const continueButton =
-    qs('#btn-continue');
-
-
-  if (continueButton) {
-
-    continueButton.addEventListener(
-      'click',
-      handleContinueToProcessing
-    );
-
-  }
-
+function highlightSelectedFrame(frameId) {
+  qsa('.frame-card').forEach((card) => {
+    card.classList.toggle('is-selected', card.dataset.frameId === frameId);
+  });
 }
 
-
-/* ============================================================
-   PROCESSING PLACEHOLDER
-============================================================ */
-
-/*
- * Fungsi lengkapnya berada pada Tahap 4.
- *
- * Kita deklarasikan sebagai function declaration,
- * sehingga initPreview() dapat memanggilnya
- * walaupun definisi lengkap berada di bawah.
- */
-
-async function handleContinueToProcessing() {
-
-  /*
-   * ISI FINAL ADA DI TAHAP 4.
-   *
-   * Jangan menambahkan kode di sini dahulu.
-   */
-
-  console.warn(
-    '[HIMSI] Processing handler belum dipasang. Lanjutkan ke Tahap 4.'
-  );
-
-}
-
-/* ============================================================
-   PROCESSING → RESULT
-============================================================ */
-
-async function handleContinueToProcessing() {
-
-  /*
-   * Cegah tombol Continue ditekan
-   * berkali-kali ketika processing.
-   */
-
-  const continueButton =
-    qs('#btn-continue');
-
-
-  if (continueButton) {
-
-    continueButton.disabled =
-      true;
-
-  }
-
-
-  try {
-
-    /* ========================================================
-       VALIDATE STATE
-    ======================================================== */
-
-    const state =
-      getState();
-
-
-    const frame =
-      getFrame(
-        state.selectedFrameId
-      );
-
-
-    if (!frame) {
-
-      throw new Error(
-        'Frame tidak ditemukan.'
-      );
-
-    }
-
-
-    if (
-      !state.photos ||
-      state.photos.length === 0
-    ) {
-
-      throw new Error(
-        'Tidak ada foto yang dapat diproses.'
-      );
-
-    }
-
-
-    /*
-     * Pastikan jumlah foto sesuai
-     * kebutuhan frame.
-     */
-
-    if (
-      state.photos.length <
-      frame.photoCount
-    ) {
-
-      throw new Error(
-        `Foto belum lengkap. Dibutuhkan ${frame.photoCount} foto.`
-      );
-
-    }
-
-
-    /* ========================================================
-       PROCESSING SCREEN
-    ======================================================== */
-
-    showScreen(
-      'processing'
-    );
-
-
-    console.log(
-      '[HIMSI] Processing final photo...'
-    );
-
-
-    /* ========================================================
-       GENERATE FINAL PHOTO
-    ======================================================== */
-
-    const finalBlob =
-      await runProcessing(
-        frame,
-        state.photos,
-        {
-
-          progressBar:
-            qs(
-              '#processing-progress-bar'
-            ),
-
-          progressPercent:
-            qs(
-              '#processing-progress-percent'
-            ),
-
-          checklist:
-            qs(
-              '#processing-checklist'
-            )
-
-        }
-      );
-
-
-    /* ========================================================
-       VALIDATE FINAL BLOB
-    ======================================================== */
-
-    if (
-      !(finalBlob instanceof Blob)
-    ) {
-
-      throw new Error(
-        'Processing tidak menghasilkan Blob foto.'
-      );
-
-    }
-
-
-    console.log(
-      '[HIMSI] Final Blob:',
-      finalBlob
-    );
-
-
-    console.log(
-      '[HIMSI] Final photo size:',
-      (
-        finalBlob.size /
-        1024 /
-        1024
-      ).toFixed(2),
-      'MB'
-    );
-
-
-    /* ========================================================
-       SAVE RESULT TO STATE
-    ======================================================== */
-
-    setResult(
-      finalBlob
-    );
-
-
-    const finalState =
-      getState();
-
-
-    if (
-      !finalState.resultUrl
-    ) {
-
-      throw new Error(
-        'Result URL tidak berhasil dibuat.'
-      );
-
-    }
-
-
-    /* ========================================================
-       RESET PREVIOUS CLOUD RESULT
-    ======================================================== */
-
-    resetResult();
-
-
-    /* ========================================================
-       SHOW RESULT SCREEN
-    ======================================================== */
-
-    showScreen(
-      'result'
-    );
-
-
-    /*
-     * Jangan menunggu upload untuk
-     * menampilkan foto.
-     *
-     * Pengunjung harus langsung
-     * melihat hasil fotonya.
-     */
-
-    renderResult(
-      qs('#result-image'),
-      finalState.resultUrl
-    );
-
-
-    /* ========================================================
-       DOWNLOAD BUTTON EFFECT
-    ======================================================== */
-
-    const downloadButton =
-      qs('#btn-download');
-
-
-    if (downloadButton) {
-
-      pulseElement(
-        downloadButton,
-        'btn-pulse-once'
-      );
-
-    }
-
-
-    /* ========================================================
-       CLOUD UPLOAD
-    ======================================================== */
-
-    /*
-     * Upload dipisahkan dari processing utama.
-     *
-     * Kalau internet gagal:
-     * - foto tetap tampil
-     * - local download tetap bekerja
-     *
-     * Ini penting untuk penggunaan
-     * photobooth di acara.
-     */
-
-    try {
-
-      console.log(
-        '[HIMSI] Uploading final photo...'
-      );
-
-
-      /*
-       * processResult:
-       *
-       * 1. render
-       * 2. simpan Blob
-       * 3. upload
-       * 4. simpan Public URL
-       *
-       * Render kedua tidak masalah,
-       * tetapi menggunakan URL yang sama.
-       */
-
-      const uploadedPhoto =
-        await processResult(
-          qs('#result-image'),
-          finalState.resultUrl,
-          finalState.resultBlob
-        );
-
-
-      if (
-        !uploadedPhoto ||
-        !uploadedPhoto.url
-      ) {
-
-        throw new Error(
-          'Upload selesai tetapi Public URL tidak tersedia.'
-        );
-
-      }
-
-
-      console.log(
-        '[HIMSI] ================================='
-      );
-
-
-      console.log(
-        '[HIMSI] PHOTO UPLOAD SUCCESS'
-      );
-
-
-      console.log(
-        '[HIMSI] Public URL:',
-        uploadedPhoto.url
-      );
-
-
-      console.log(
-        '[HIMSI] ================================='
-      );
-
-
-      /*
-       * result.js sudah menyimpan:
-       *
-       * window.HimsiLastUploadedPhoto
-       *
-       * dan mengirim event:
-       *
-       * himsi-photo-uploaded
-       *
-       * Jadi JANGAN dispatch event kedua
-       * di app.js.
-       */
-
-
-    } catch (
-      uploadError
-    ) {
-
-      /*
-       * Upload gagal tidak boleh
-       * merusak halaman Result.
-       */
-
-      console.error(
-        '[HIMSI] Cloud upload gagal:',
-        uploadError
-      );
-
-
-      /*
-       * Foto tetap ada karena
-       * finalState.resultBlob dan
-       * finalState.resultUrl tersimpan
-       * di state aplikasi.
-       */
-
-    }
-
-
-  } catch (
-    processingError
-  ) {
-
-    console.error(
-      '[HIMSI] Processing gagal:',
-      processingError
-    );
-
-
-    alert(
-      'Terjadi kesalahan saat memproses foto. Silakan coba kembali.'
-    );
-
-
-    /*
-     * Jangan biarkan user
-     * terjebak di Processing Screen.
-     */
-
-    showScreen(
-      'preview'
-    );
-
-
-  } finally {
-
-    /*
-     * Aktifkan kembali Continue.
-     */
-
-    if (continueButton) {
-
-      continueButton.disabled =
-        false;
-
-    }
-
-  }
-
-}
-
-
-/* ============================================================
-   RESULT
-============================================================ */
-
-function initResult() {
-
-  /* ==========================================================
-     DOWNLOAD PHOTO
-  ========================================================== */
-
-  const downloadButton =
-    qs('#btn-download');
-
-
-  if (downloadButton) {
-
-    downloadButton.addEventListener(
-      'click',
-      () => {
-
-        const state =
-          getState();
-
-
-        /*
-         * Download tetap menggunakan
-         * Blob lokal.
-         *
-         * Tidak tergantung internet.
-         */
-
-        if (
-          !(state.resultBlob instanceof Blob)
-        ) {
-
-          console.error(
-            '[HIMSI] Result Blob tidak tersedia.'
-          );
-
-
-          alert(
-            'Foto belum tersedia untuk diunduh.'
-          );
-
-
-          return;
-
-        }
-
-
-        downloadResult(
-          state.resultBlob
-        );
-
-      }
-    );
-
-  }
-
-
-  /* ==========================================================
-     TAKE ANOTHER PHOTO
-  ========================================================== */
-
-  const takeAnotherButton =
-    qs('#btn-take-another');
-
-
-  if (takeAnotherButton) {
-
-    takeAnotherButton.addEventListener(
-      'click',
-      () => {
-
-        /*
-         * Reset cloud result.
-         */
-
-        resetResult();
-
-
-        /*
-         * Reset photobooth session.
-         */
-
-        resetSession();
-
-
-        /*
-         * Bersihkan selected frame UI.
-         */
-
-        highlightSelectedFrame(
-          null
-        );
-
-
-        /*
-         * Kembali memilih frame.
-         */
-
-        showScreen(
-          'frames'
-        );
-
-      }
-    );
-
-  }
-
-
-  /* ==========================================================
-     BACK TO HOME
-  ========================================================== */
-
-  const backHomeButton =
-    qs('#btn-back-home');
-
-
-  if (backHomeButton) {
-
-    backHomeButton.addEventListener(
-      'click',
-      () => {
-
-        /*
-         * Reset result.
-         */
-
-        resetResult();
-
-
-        /*
-         * Reset session.
-         */
-
-        resetSession();
-
-
-        /*
-         * Reset visual frame selection.
-         */
-
-        highlightSelectedFrame(
-          null
-        );
-
-
-        /*
-         * Kembali ke landing paling awal.
-         */
-
-        showScreen(
-          'landing'
-        );
-
-      }
-    );
-
-  }
-
-}
-
-
-/* ============================================================
-   GLOBAL DEBUG API
-============================================================ */
-
-/*
- * API ini berguna saat development.
- *
- * Bisa dites dari Browser Console.
- */
-
-window.HimsiPhotobooth = {
-
-  /* ==========================================================
-     GET APPLICATION STATE
-  ========================================================== */
-
-  getState() {
-
-    return getState();
-
-  },
-
-
-  /* ==========================================================
-     CHANGE SCREEN
-  ========================================================== */
-
-  showScreen(
-    screenName
-  ) {
-
-    showScreen(
-      screenName
-    );
-
-  },
-
-
-  /* ==========================================================
-     GET LAST UPLOADED PHOTO
-  ========================================================== */
-
-  getLastUploadedPhoto() {
-
-    return (
-      getUploadedPhoto() ||
-      window.HimsiLastUploadedPhoto ||
-      null
-    );
-
-  },
-
-
-  /* ==========================================================
-     GET PUBLIC PHOTO URL
-  ========================================================== */
-
-  getPublicPhotoUrl() {
-
-    return (
-      getPublicUrl() ||
-      null
-    );
-
-  },
-
-
-  /* ==========================================================
-     GET RESULT SYSTEM
-  ========================================================== */
-
-  getResultSystem() {
-
-    return (
-      window.HimsiResult ||
-      null
-    );
-
-  },
-
-
-  /* ==========================================================
-     GET UPLOAD SYSTEM
-  ========================================================== */
-
-  getUploadSystem() {
-
-    return (
-      window.HimsiPhotoUpload ||
-      null
-    );
-
-  }
-
+/* -------------------------------------------------------------------- */
+/*  CAMERA SCREEN                                                         */
+/* -------------------------------------------------------------------- */
+
+const FLASH_MESSAGES = {
+  start: 'Cari pose terbaikmu!',
+  nice: 'Nice shot!',
+  keepGoing: 'Keep going!',
+  oneMore: 'One more!',
+  done: 'Memory captured!',
 };
 
-
-/* ============================================================
-   APPLICATION DEPENDENCY CHECK
-============================================================ */
-
-function checkDependencies() {
-
-  let ready =
-    true;
-
-
-  /* ==========================================================
-     UPLOAD SYSTEM
-  ========================================================== */
-
-  if (
-    !window.HimsiPhotoUpload
-  ) {
-
-    console.warn(
-      '[HIMSI] HimsiPhotoUpload belum tersedia.'
-    );
-
-
-    console.warn(
-      '[HIMSI] Pastikan upload.js dimuat sebelum app.js.'
-    );
-
-
-    ready =
-      false;
-
-  } else {
-
-    console.log(
-      '[HIMSI] Upload system ready.'
-    );
-
-  }
-
-
-  /* ==========================================================
-     RESULT SYSTEM
-  ========================================================== */
-
-  if (
-    !window.HimsiResult
-  ) {
-
-    /*
-     * Tidak fatal karena result.js
-     * juga di-import sebagai module.
-     */
-
-    console.warn(
-      '[HIMSI] Global HimsiResult tidak ditemukan.'
-    );
-
-  } else {
-
-    console.log(
-      '[HIMSI] Result system ready.'
-    );
-
-  }
-
-
-  return ready;
-
+function nextFlashMessage(photosTaken, total) {
+  if (photosTaken >= total) return FLASH_MESSAGES.done;
+  const remaining = total - photosTaken;
+  if (remaining === 1) return FLASH_MESSAGES.oneMore;
+  if (photosTaken === 1) return FLASH_MESSAGES.nice;
+  return FLASH_MESSAGES.keepGoing;
 }
 
+function renderCameraThumbs(frame) {
+  const wrap = qs('#camera-thumbs');
+  wrap.innerHTML = '';
+  const state = getState();
 
-/* ============================================================
-   APPLICATION INITIALIZATION
-============================================================ */
+  for (let i = 0; i < frame.photoCount; i++) {
+    const thumb = document.createElement('div');
+    const taken = i < state.photos.length;
+    thumb.className = `camera-thumb ${taken ? 'is-taken' : ''}`;
+    thumb.textContent = String(i + 1).padStart(2, '0');
+    wrap.appendChild(thumb);
+  }
+}
 
-async function init() {
+/* ---- Status indikator (LIVE / CAMERA OFF / CONNECTING... / CAMERA ERROR) ---- */
+
+function setCameraStatus(status) {
+  const indicator = qs('#live-indicator');
+  const text = qs('#live-indicator-text');
+  indicator.classList.remove('live-indicator--live', 'live-indicator--connecting', 'live-indicator--error', 'live-indicator--off');
+  indicator.classList.add(`live-indicator--${status}`);
+  const labels = {
+    live: 'LIVE',
+    connecting: 'CONNECTING...',
+    error: 'CAMERA ERROR',
+    off: 'CAMERA OFF',
+  };
+  text.textContent = labels[status] || labels.off;
+
+  // FULL CAMERA cuma masuk akal dipakai saat stream benar-benar live.
+  const fullBtn = qs('#btn-full-camera');
+  if (fullBtn && !fullBtn.classList.contains('is-hidden')) {
+    fullBtn.disabled = status !== 'live';
+  }
+}
+
+/** Update tampilan PHOTO xx/yy di dua tempat sekaligus (bar bawah + topbar fullscreen). */
+function updatePhotoCounter(current, total) {
+  const currentStr = String(current).padStart(2, '0');
+  const totalStr = String(total).padStart(2, '0');
+  qs('#camera-photo-current').textContent = currentStr;
+  qs('#camera-photo-total').textContent = totalStr;
+  qs('#camera-photo-current-fs').textContent = currentStr;
+  qs('#camera-photo-total-fs').textContent = totalStr;
+}
+
+/* ---- FULL CAMERA (Fullscreen API pada seluruh container live camera) ---- */
+
+function isFullscreenSupported() {
+  return Boolean(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+}
+
+async function openCameraFullscreen() {
+  const container = qs('#camera-live');
+  try {
+    if (document.fullscreenElement || document.webkitFullscreenElement) return;
+    if (container.requestFullscreen) {
+      await container.requestFullscreen();
+    } else if (container.webkitRequestFullscreen) {
+      await container.webkitRequestFullscreen();
+    }
+  } catch (err) {
+    console.error('[camera] Fullscreen gagal diaktifkan:', err);
+  }
+}
+
+async function exitCameraFullscreen() {
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else if (document.webkitFullscreenElement) {
+      await document.webkitExitFullscreen();
+    }
+  } catch (err) {
+    console.error('[camera] Gagal keluar fullscreen:', err);
+  }
+}
+
+/* ---- CAMERA SOURCE (enumerasi & pilih webcam internal/USB eksternal) ---- */
+
+let unsubscribeDeviceList = null;
+let unsubscribeStreamEnded = null;
+
+async function populateCameraSourceSelect() {
+  const wrap = qs('#camera-source-wrap');
+  const select = qs('#camera-source-select');
+  let devices = [];
+  try {
+    devices = await listVideoInputDevices();
+  } catch (err) {
+    console.error('[camera] enumerateDevices error:', err);
+  }
+
+  if (devices.length === 0) {
+    wrap.classList.add('is-hidden');
+    return;
+  }
+
+  wrap.classList.remove('is-hidden');
+  const state = getState();
+  const currentId = state.selectedDeviceId;
+  const stillExists = currentId && devices.some((d) => d.deviceId === currentId);
+  const activeId = stillExists ? currentId : devices[0].deviceId;
+  if (!stillExists) setSelectedDeviceId(activeId);
+
+  select.innerHTML = '';
+  devices.forEach((device, i) => {
+    const opt = document.createElement('option');
+    opt.value = device.deviceId;
+    opt.textContent = device.label || `Camera ${i + 1}`;
+    if (device.deviceId === activeId) opt.selected = true;
+    select.appendChild(opt);
+  });
+  select.disabled = devices.length <= 1;
+}
+
+function teardownCameraListeners() {
+  if (unsubscribeDeviceList) {
+    unsubscribeDeviceList();
+    unsubscribeDeviceList = null;
+  }
+  if (unsubscribeStreamEnded) {
+    unsubscribeStreamEnded();
+    unsubscribeStreamEnded = null;
+  }
+}
+
+function stopCameraAndListeners(video) {
+  teardownCameraListeners();
+  stopCamera(video);
+  // Jangan biarkan browser "nyangkut" fullscreen begitu user meninggalkan
+  // Camera.exe (foto selesai / kembali ke Frames). exitCameraFullscreen()
+  // menelan errornya sendiri kalau memang sedang tidak fullscreen.
+  exitCameraFullscreen();
+}
+
+function handleStreamDisconnected() {
+  // Webcam tercabut fisik saat stream aktif. JANGAN hapus foto yang sudah
+  // diambil, JANGAN reset frame — hanya tampilkan status & biarkan user
+  // menyambungkan ulang lalu REFRESH CAMERA.
+  console.warn('[camera] stream ended unexpectedly (webcam disconnected?)');
+  setCaptureEnabled(false);
+  setCameraStatus('off');
+  qs('#camera-disconnected').classList.remove('is-hidden');
+  if (unsubscribeStreamEnded) {
+    unsubscribeStreamEnded();
+    unsubscribeStreamEnded = null;
+  }
+}
+
+async function enterCameraScreen({ isRetake }) {
+  showScreen('camera');
+
+  const frame = getFrame(getState().selectedFrameId);
+  qs('#camera-frame-name').textContent = `${frame.id.toUpperCase()}.PNG`;
+  qs('#camera-photo-total').textContent = String(frame.photoCount).padStart(2, '0');
+  qs('#camera-photo-total-fs').textContent = String(frame.photoCount).padStart(2, '0');
+
+  const gate = qs('#camera-permission');
+  const errorEl = qs('#camera-error');
+  const liveEl = qs('#camera-live');
+
+  errorEl.classList.add('is-hidden');
+  qs('#camera-disconnected').classList.add('is-hidden');
+  setCameraStatus('off');
+
+  if (isRetake) {
+    gate.classList.add('is-hidden');
+    await activateCamera(frame);
+  } else {
+    gate.classList.remove('is-hidden');
+    liveEl.classList.add('is-hidden');
+  }
+}
+
+function syncMirrorToggles() {
+  const state = getState();
+  qs('#toggle-mirror-preview').checked = state.mirrorPreview;
+  qs('#toggle-mirror-output').checked = state.mirrorOutput;
+  applyMirrorPreviewClass();
+}
+
+function applyMirrorPreviewClass() {
+  const video = qs('#camera-video');
+  video.classList.toggle('is-mirrored', getState().mirrorPreview);
+}
+
+async function activateCamera(frame) {
+  const gate = qs('#camera-permission');
+  const errorEl = qs('#camera-error');
+  const liveEl = qs('#camera-live');
+  const video = qs('#camera-video');
+
+  teardownCameraListeners();
+  qs('#camera-disconnected').classList.add('is-hidden');
+  setCameraStatus('connecting');
 
   try {
+    await startCamera(video, getState().selectedDeviceId);
+    gate.classList.add('is-hidden');
+    errorEl.classList.add('is-hidden');
+    liveEl.classList.remove('is-hidden');
+    setCameraStatus('live');
+    syncMirrorToggles();
+    await populateCameraSourceSelect();
 
-    console.log(
-      '[HIMSI] ================================='
-    );
+    unsubscribeStreamEnded = watchStreamDisconnect(getState().mediaStream, handleStreamDisconnected);
+    if (!unsubscribeDeviceList) {
+      unsubscribeDeviceList = onDeviceListChange(() => populateCameraSourceSelect());
+    }
 
-
-    console.log(
-      '[HIMSI] HIMSI META PHOTOBOOTH'
-    );
-
-
-    console.log(
-      '[HIMSI] Initializing...'
-    );
-
-
-    console.log(
-      '[HIMSI] ================================='
-    );
-
-
-    /* ========================================================
-       RESET RESULT
-    ======================================================== */
-
-    resetResult();
-
-
-    /* ========================================================
-       DEPENDENCY CHECK
-    ======================================================== */
-
-    checkDependencies();
-
-
-    /* ========================================================
-       INITIALIZE UI
-    ======================================================== */
-
-    initLanding();
-
-
-    initFrames();
-
-
-    initCamera();
-
-
-    initPreview();
-
-
-    initResult();
-
-
-    /* ========================================================
-       BOOT ANIMATION
-    ======================================================== */
-
-    await runBoot();
-
-
-    /* ========================================================
-       SHOW LANDING
-    ======================================================== */
-
-    showScreen(
-      'landing'
-    );
-
-
-    /* ========================================================
-       READY
-    ======================================================== */
-
-    console.log(
-      '[HIMSI] ================================='
-    );
-
-
-    console.log(
-      '[HIMSI] Photobooth ready.'
-    );
-
-
-    console.log(
-      '[HIMSI] ================================='
-    );
-
-
-  } catch (
-    error
-  ) {
-
-    console.error(
-      '[HIMSI] Initialization error:',
-      error
-    );
-
-
-    /*
-     * Jangan diam kalau startup gagal.
-     */
-
-    alert(
-      'Photobooth gagal dimuat. Silakan refresh halaman.'
-    );
-
+    const state = getState();
+    const photosTaken = state.retakeIndex !== null ? state.photos.length : state.photos.length;
+    updatePhotoCounter(Math.min(photosTaken + 1, frame.photoCount), frame.photoCount);
+    qs('#camera-flash-message').textContent =
+      state.photos.length === 0 ? FLASH_MESSAGES.start : nextFlashMessage(state.photos.length, frame.photoCount);
+    renderCameraThumbs(frame);
+    setCaptureEnabled(true);
+  } catch (err) {
+    console.error('[camera] getUserMedia error:', err);
+    const { title, message } = getCameraErrorMessage(err);
+    gate.classList.add('is-hidden');
+    liveEl.classList.add('is-hidden');
+    setCameraStatus('error');
+    qs('#camera-error-title').textContent = title;
+    qs('#camera-error-message').textContent = message;
+    errorEl.classList.remove('is-hidden');
   }
-
 }
 
+async function handleCameraSourceChange(e) {
+  const newDeviceId = e.target.value;
+  const video = qs('#camera-video');
+  setSelectedDeviceId(newDeviceId);
+  setCameraStatus('connecting');
+  if (unsubscribeStreamEnded) {
+    unsubscribeStreamEnded();
+    unsubscribeStreamEnded = null;
+  }
 
-/* ============================================================
-   START APPLICATION
-============================================================ */
+  try {
+    await switchCamera(video, newDeviceId);
+    setCameraStatus('live');
+    applyMirrorPreviewClass(); // deviceId baru tidak mengubah mirror setting, pastikan class tetap sesuai
+    unsubscribeStreamEnded = watchStreamDisconnect(getState().mediaStream, handleStreamDisconnected);
+  } catch (err) {
+    console.error('[camera] switchCamera error:', err);
+    const { title, message } = getCameraErrorMessage(err);
+    setCameraStatus('error');
+    qs('#camera-live').classList.add('is-hidden');
+    qs('#camera-error-title').textContent = title;
+    qs('#camera-error-message').textContent = message;
+    qs('#camera-error').classList.remove('is-hidden');
+  }
+}
+
+function handleRefreshCamera() {
+  qs('#camera-disconnected').classList.add('is-hidden');
+  const frame = getFrame(getState().selectedFrameId);
+  activateCamera(frame);
+}
+
+function setCaptureEnabled(enabled) {
+  qs('#btn-capture').disabled = !enabled;
+}
+
+async function handleCapture() {
+  const frame = getFrame(getState().selectedFrameId);
+  const video = qs('#camera-video');
+
+  setCaptureEnabled(false);
+
+  await runCountdown({
+    overlay: qs('#countdown-overlay'),
+    label: qs('#countdown-label'),
+    flash: qs('#countdown-flash'),
+  });
+
+  const blob = await captureFrameToBlob(video, getState().mirrorOutput);
+  const state = getState();
+
+  if (state.retakeIndex !== null) {
+    replacePhotoAt(state.retakeIndex, blob);
+    clearRetakeIndex();
+    stopCameraAndListeners(video);
+    goToPreview();
+    return;
+  }
+
+  addPhoto(blob);
+  const updated = getState();
+  renderCameraThumbs(frame);
+
+  if (updated.photos.length >= frame.photoCount) {
+    qs('#camera-flash-message').textContent = FLASH_MESSAGES.done;
+    pulseElement(qs('#camera-flash-message'));
+    await wait(500);
+    stopCameraAndListeners(video);
+    goToPreview();
+  } else {
+    updatePhotoCounter(updated.photos.length + 1, frame.photoCount);
+    qs('#camera-flash-message').textContent = nextFlashMessage(updated.photos.length, frame.photoCount);
+    pulseElement(qs('#camera-flash-message'));
+    setCaptureEnabled(true);
+  }
+}
+
+function initCamera() {
+  // Fitur Full Camera hanya ditawarkan kalau browser benar-benar mendukung
+  // Fullscreen API (section 36: jangan sampai error di browser yang tak
+  // mendukung — tombolnya disembunyikan total, bukan dibiarkan rusak).
+  if (isFullscreenSupported()) {
+    qs('#btn-full-camera').classList.remove('is-hidden');
+  }
+
+  qs('#btn-full-camera').addEventListener('click', openCameraFullscreen);
+  qs('#btn-exit-fullscreen').addEventListener('click', exitCameraFullscreen);
+
+  qs('#btn-back-to-frames').addEventListener('click', () => {
+    teardownCameraListeners();
+    clearCapturedPhotos();
+    exitCameraFullscreen();
+    showScreen('frames');
+  });
+
+  qs('#toggle-mirror-preview').addEventListener('change', (e) => {
+    setMirrorPreview(e.target.checked);
+    applyMirrorPreviewClass();
+  });
+
+  qs('#toggle-mirror-output').addEventListener('change', (e) => {
+    setMirrorOutput(e.target.checked);
+  });
+
+  qs('#camera-source-select').addEventListener('change', handleCameraSourceChange);
+  qs('#btn-refresh-camera').addEventListener('click', handleRefreshCamera);
+
+  qs('#btn-enable-camera').addEventListener('click', () => {
+    const frame = getFrame(getState().selectedFrameId);
+    activateCamera(frame);
+  });
+
+  qs('#btn-retry-camera').addEventListener('click', () => {
+    const frame = getFrame(getState().selectedFrameId);
+    activateCamera(frame);
+  });
+
+  qs('#btn-capture').addEventListener('click', handleCapture);
+}
+
+/* -------------------------------------------------------------------- */
+/*  PREVIEW SCREEN                                                        */
+/* -------------------------------------------------------------------- */
+
+function goToPreview() {
+  showScreen('preview');
+  const state = getState();
+  renderPreviewGrid(qs('#preview-grid'), state.photos, handleRetakeRequest);
+}
+
+function handleRetakeRequest(index) {
+  setRetakeIndex(index);
+  enterCameraScreen({ isRetake: true });
+}
+
+function initPreview() {
+  qs('#btn-back-to-camera').addEventListener('click', () => {
+    clearCapturedPhotos();
+    enterCameraScreen({ isRetake: true }); // isRetake=true = langsung live, skip gate (izin sudah didapat)
+  });
+
+  qs('#btn-continue').addEventListener('click', async () => {
+    showScreen('processing');
+    const frame = getFrame(getState().selectedFrameId);
+    const state = getState();
+
+    const blob = await runProcessing(frame, state.photos, {
+      progressBar: qs('#processing-progress-bar'),
+      progressPercent: qs('#processing-progress-percent'),
+      checklist: qs('#processing-checklist'),
+    });
+
+    setResult(blob);
+    showScreen('result');
+    renderResult(qs('#result-image'), getState().resultUrl);
+    pulseElement(qs('#btn-download'), 'btn-pulse-once');
+  });
+}
+
+/* -------------------------------------------------------------------- */
+/*  RESULT SCREEN                                                         */
+/* -------------------------------------------------------------------- */
+
+function initResult() {
+  qs('#btn-download').addEventListener('click', () => {
+    const state = getState();
+    if (state.resultBlob) downloadResult(state.resultBlob);
+  });
+
+  qs('#btn-take-another').addEventListener('click', () => {
+    resetSession();
+    highlightSelectedFrame(null);
+    showScreen('frames');
+  });
+
+  qs('#btn-back-home').addEventListener('click', () => {
+    resetSession();
+    highlightSelectedFrame(null);
+    showScreen('landing');
+  });
+}
+
+/* -------------------------------------------------------------------- */
+/*  INIT                                                                  */
+/* -------------------------------------------------------------------- */
+
+async function init() {
+  initLanding();
+  initFrames();
+  initCamera();
+  initPreview();
+  initResult();
+
+  await runBoot();
+  showScreen('landing');
+}
 
 init();
