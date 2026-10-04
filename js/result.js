@@ -1,541 +1,263 @@
 /**
  * ============================================
  * HIMSI META PHOTOBOOTH
- * Result Handler
+ * Result System
  * ============================================
  *
  * File:
  * js/result.js
  *
  * Fungsi:
- * 1. Menampilkan hasil final photobooth
- * 2. Download hasil foto
- * 3. Upload hasil foto ke Vercel melalui upload.js
- * 4. Menyimpan URL hasil upload untuk QR Code
- *
- * Project menggunakan Vanilla JS.
- * Tidak menggunakan import/export ES Module.
+ * - Menampilkan hasil foto
+ * - Download foto
+ * - Upload foto ke server
+ * - Menyimpan URL hasil upload
  */
 
 
 /**
  * ============================================
- * FORMAT TIMESTAMP
+ * Helper Timestamp
  * ============================================
- *
- * Digunakan untuk membuat nama file unik.
  */
 
-function formatResultTimestamp() {
+function formatTimestamp() {
+  const now = new Date();
 
-    const now = new Date();
+  const year = now.getFullYear();
 
-    const year =
-        now.getFullYear();
+  const month = String(
+    now.getMonth() + 1
+  ).padStart(2, '0');
 
-    const month =
-        String(now.getMonth() + 1)
-            .padStart(2, "0");
+  const day = String(
+    now.getDate()
+  ).padStart(2, '0');
 
-    const day =
-        String(now.getDate())
-            .padStart(2, "0");
+  const hours = String(
+    now.getHours()
+  ).padStart(2, '0');
 
-    const hours =
-        String(now.getHours())
-            .padStart(2, "0");
+  const minutes = String(
+    now.getMinutes()
+  ).padStart(2, '0');
 
-    const minutes =
-        String(now.getMinutes())
-            .padStart(2, "0");
+  const seconds = String(
+    now.getSeconds()
+  ).padStart(2, '0');
 
-    const seconds =
-        String(now.getSeconds())
-            .padStart(2, "0");
-
-
-    return (
-        `${year}${month}${day}_` +
-        `${hours}${minutes}${seconds}`
-    );
+  return `${year}${month}${day}_${hours}${minutes}${seconds}`;
 }
 
 
 /**
  * ============================================
- * DOWNLOAD BLOB
+ * Render Result
  * ============================================
- *
- * Menggantikan fungsi downloadBlob
- * yang sebelumnya di-import dari utils.js.
  */
 
-function downloadResultBlob(blob, filename) {
+export function renderResult(imgEl, resultUrl) {
 
-    if (!(blob instanceof Blob)) {
-
-        console.error(
-            "Download gagal: data bukan Blob."
-        );
-
-        return;
-
-    }
-
-
-    const url =
-        URL.createObjectURL(blob);
-
-
-    const link =
-        document.createElement("a");
-
-
-    link.href =
-        url;
-
-    link.download =
-        filename;
-
-
-    document.body.appendChild(link);
-
-    link.click();
-
-    link.remove();
-
-
-    setTimeout(
-        () => {
-
-            URL.revokeObjectURL(url);
-
-        },
-        1000
+  if (!imgEl) {
+    console.error(
+      '[result] Element gambar tidak ditemukan.'
     );
 
+    return;
+  }
+
+  if (!resultUrl) {
+    console.error(
+      '[result] URL hasil foto tidak tersedia.'
+    );
+
+    return;
+  }
+
+  imgEl.src = resultUrl;
 }
 
 
 /**
  * ============================================
- * RENDER RESULT
+ * Download Result
  * ============================================
- *
- * Menampilkan hasil akhir photobooth.
- *
- * @param {HTMLImageElement} imgEl
- * @param {string} resultUrl
  */
 
-function renderResult(
+export function downloadResult(resultBlob) {
+
+  if (!(resultBlob instanceof Blob)) {
+
+    console.error(
+      '[result] Blob hasil foto tidak valid.'
+    );
+
+    return;
+  }
+
+
+  const url =
+    URL.createObjectURL(resultBlob);
+
+
+  const anchor =
+    document.createElement('a');
+
+
+  anchor.href = url;
+
+  anchor.download =
+    `HIMSI_PHOTOBOOTH_${formatTimestamp()}.png`;
+
+
+  document.body.appendChild(anchor);
+
+  anchor.click();
+
+  anchor.remove();
+
+
+  setTimeout(() => {
+
+    URL.revokeObjectURL(url);
+
+  }, 1000);
+}
+
+
+/**
+ * ============================================
+ * Upload Result
+ * ============================================
+ */
+
+export async function uploadResult(resultBlob) {
+
+  if (!(resultBlob instanceof Blob)) {
+
+    throw new Error(
+      'Blob hasil foto tidak valid.'
+    );
+  }
+
+
+  if (
+    !window.HimsiPhotoUpload ||
+    typeof window.HimsiPhotoUpload.upload !== 'function'
+  ) {
+
+    throw new Error(
+      'HimsiPhotoUpload belum tersedia.'
+    );
+  }
+
+
+  console.log(
+    '[result] Uploading final photo...'
+  );
+
+
+  try {
+
+    const photo =
+      await window.HimsiPhotoUpload.upload(
+        resultBlob
+      );
+
+
+    console.log(
+      '[result] Upload berhasil:',
+      photo
+    );
+
+
+    return photo;
+
+  } catch (error) {
+
+    console.error(
+      '[result] Upload gagal:',
+      error
+    );
+
+
+    throw error;
+  }
+}
+
+
+/**
+ * ============================================
+ * Process Result
+ * ============================================
+ *
+ * Bisa digunakan untuk:
+ *
+ * processing
+ * ↓
+ * result
+ * ↓
+ * upload
+ * ↓
+ * QR
+ */
+
+export async function processResult(
+  imgEl,
+  resultUrl,
+  resultBlob
+) {
+
+  renderResult(
     imgEl,
     resultUrl
-) {
-
-    if (!(imgEl instanceof HTMLImageElement)) {
-
-        console.error(
-            "Elemen preview hasil tidak valid."
-        );
-
-        return;
-
-    }
+  );
 
 
-    if (!resultUrl) {
+  if (!(resultBlob instanceof Blob)) {
 
-        console.error(
-            "URL hasil foto tidak tersedia."
-        );
-
-        return;
-
-    }
-
-
-    imgEl.src =
-        resultUrl;
-
-}
-
-
-/**
- * ============================================
- * DOWNLOAD RESULT
- * ============================================
- *
- * Download final photo ke perangkat user.
- *
- * @param {Blob} resultBlob
- */
-
-function downloadResult(
-    resultBlob
-) {
-
-    if (!(resultBlob instanceof Blob)) {
-
-        console.error(
-            "Final photo bukan Blob."
-        );
-
-        return;
-
-    }
-
-
-    const filename =
-        `HIMSI_PHOTOBOOTH_${formatResultTimestamp()}.png`;
-
-
-    downloadResultBlob(
-        resultBlob,
-        filename
+    throw new Error(
+      'Result Blob tidak tersedia.'
     );
-
-}
-
-
-/**
- * ============================================
- * UPLOAD RESULT
- * ============================================
- *
- * Mengirim final photo ke sistem upload.js.
- *
- * Hasil upload nantinya berupa URL publik
- * yang dapat digunakan untuk QR Code.
- *
- * @param {Blob} resultBlob
- * @returns {Promise<Object>}
- */
-
-async function uploadResult(
-    resultBlob
-) {
-
-    // ------------------------------------------
-    // Validasi Blob
-    // ------------------------------------------
-
-    if (!(resultBlob instanceof Blob)) {
-
-        throw new Error(
-            "Final photo bukan Blob."
-        );
-
-    }
+  }
 
 
-    // ------------------------------------------
-    // Pastikan upload.js sudah dimuat
-    // ------------------------------------------
-
-    if (!window.HimsiPhotoUpload) {
-
-        throw new Error(
-            "HimsiPhotoUpload tidak tersedia. " +
-            "Pastikan upload.js dimuat sebelum result.js."
-        );
-
-    }
-
-
-    if (
-        typeof window.HimsiPhotoUpload.upload
-        !== "function"
-    ) {
-
-        throw new Error(
-            "Fungsi upload foto tidak tersedia."
-        );
-
-    }
-
-
-    console.log(
-        "Meng-upload hasil photobooth..."
+  const uploadedPhoto =
+    await uploadResult(
+      resultBlob
     );
 
 
-    try {
-
-        const photo =
-            await window.HimsiPhotoUpload.upload(
-                resultBlob
-            );
-
-
-        console.log(
-            "Upload hasil photobooth berhasil:",
-            photo
-        );
-
-
-        /**
-         * Simpan informasi hasil upload.
-         *
-         * Data ini nanti digunakan qr.js
-         * untuk membuat QR Code.
-         */
-
-        window.HimsiPhotoResult =
-            window.HimsiPhotoResult || {};
-
-
-        window.HimsiPhotoResult.photo =
-            photo;
-
-
-        window.HimsiPhotoResult.url =
-            photo.url;
-
-
-        window.HimsiPhotoResult.downloadUrl =
-            photo.downloadUrl ||
-            photo.url;
-
-
-        return photo;
-
-    } catch (error) {
-
-        console.error(
-            "Upload hasil photobooth gagal:",
-            error
-        );
-
-
-        throw error;
-
-    }
-
+  return uploadedPhoto;
 }
 
 
 /**
  * ============================================
- * PROCESS FINAL RESULT
+ * Global Compatibility
  * ============================================
  *
- * Fungsi utama setelah proses compose selesai.
- *
- * Fungsi ini:
- *
- * 1. Menampilkan preview
- * 2. Menyimpan Blob final
- * 3. Menyimpan Object URL
- * 4. Upload foto
- * 5. Menyimpan public URL
- *
- * QR Code nantinya menggunakan URL tersebut.
- *
- * @param {HTMLImageElement} imgEl
- * @param {Blob} resultBlob
- */
-
-async function processFinalResult(
-    imgEl,
-    resultBlob
-) {
-
-    if (!(resultBlob instanceof Blob)) {
-
-        throw new Error(
-            "Final result harus berupa Blob."
-        );
-
-    }
-
-
-    // ------------------------------------------
-    // Buat preview URL
-    // ------------------------------------------
-
-    const resultUrl =
-        URL.createObjectURL(
-            resultBlob
-        );
-
-
-    // ------------------------------------------
-    // Tampilkan hasil
-    // ------------------------------------------
-
-    renderResult(
-        imgEl,
-        resultUrl
-    );
-
-
-    // ------------------------------------------
-    // Simpan state hasil final
-    // ------------------------------------------
-
-    window.HimsiPhotoResult =
-        window.HimsiPhotoResult || {};
-
-
-    window.HimsiPhotoResult.blob =
-        resultBlob;
-
-
-    window.HimsiPhotoResult.previewUrl =
-        resultUrl;
-
-
-    // ------------------------------------------
-    // Upload ke server
-    // ------------------------------------------
-
-    try {
-
-        const uploadedPhoto =
-            await uploadResult(
-                resultBlob
-            );
-
-
-        console.log(
-            "Public photo URL:",
-            uploadedPhoto.url
-        );
-
-
-        /**
-         * Kalau qr.js sudah tersedia,
-         * QR bisa dibuat otomatis.
-         *
-         * Untuk sekarang kita hanya mengirim URL.
-         */
-
-        if (
-            window.HimsiQRCode &&
-            typeof window.HimsiQRCode.generate
-                === "function"
-        ) {
-
-            window.HimsiQRCode.generate(
-                uploadedPhoto.downloadUrl ||
-                uploadedPhoto.url
-            );
-
-        }
-
-
-        return uploadedPhoto;
-
-    } catch (error) {
-
-        /**
-         * Upload gagal tidak boleh membuat
-         * fungsi download lokal ikut gagal.
-         */
-
-        console.error(
-            "Cloud upload gagal. " +
-            "Download lokal tetap tersedia.",
-            error
-        );
-
-
-        return null;
-
-    }
-
-}
-
-
-/**
- * ============================================
- * GET RESULT
- * ============================================
- *
- * Utility untuk mengambil informasi hasil
- * photobooth dari script lain.
- */
-
-function getResult() {
-
-    return (
-        window.HimsiPhotoResult ||
-        null
-    );
-
-}
-
-
-/**
- * ============================================
- * CLEANUP RESULT
- * ============================================
- *
- * Jalankan ketika user memilih
- * "Take Another".
- */
-
-function cleanupResult() {
-
-    const result =
-        window.HimsiPhotoResult;
-
-
-    if (
-        result &&
-        result.previewUrl
-    ) {
-
-        URL.revokeObjectURL(
-            result.previewUrl
-        );
-
-    }
-
-
-    window.HimsiPhotoResult = null;
-
-
-    console.log(
-        "Photobooth result dibersihkan."
-    );
-
-}
-
-
-/**
- * ============================================
- * EXPORT GLOBAL
- * ============================================
- *
- * Karena project menggunakan Vanilla JS,
- * expose fungsi melalui window.
+ * Tetap menyediakan window.HimsiResult
+ * supaya bisa dites lewat Console.
  */
 
 window.HimsiResult = {
 
-    render:
-        renderResult,
+  render:
+    renderResult,
 
-    download:
-        downloadResult,
+  download:
+    downloadResult,
 
-    upload:
-        uploadResult,
+  upload:
+    uploadResult,
 
-    process:
-        processFinalResult,
-
-    get:
-        getResult,
-
-    cleanup:
-        cleanupResult
+  process:
+    processResult
 
 };
 
 
 console.log(
-    "HIMSI Result system loaded."
+  'HIMSI Result system loaded.'
 );
